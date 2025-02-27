@@ -1,0 +1,69 @@
+{
+  "questionBuilder": {
+    "title": "Constructor de Preguntas",
+    "questionType": "Tipo de Pregunta",
+    "questionNumber": "Pregunta {{number}}",
+    "types": {
+      "multipleChoice": "Opción Múltiple",
+      "multipleResponse": "Respuesta Múltiple",
+      "fillInTheBlank": "Completar el Espacio"
+    },
+    "addQuestion": "Agregar Pregunta",
+    "addOption": "Agregar Opción",
+    "addPage": "Agregar Página",
+    "noQuestions": "No hay preguntas en esta página. ¡Agrega una pregunta para comenzar!",
+    "question": "Pregunta",
+    "options": "Opciones",
+    "questionText": "Texto de la Pregunta",
+    "enterQuestion": "Ingresa tu pregunta",
+    "actions": {
+      "delete": "Eliminar",
+      "edit": "Editar",
+      "viewJson": "Ver JSON",
+      "addImage": "Agregar Imagen",
+      "editImage": "Editar Imagen",
+      "hideImage": "Ocultar",
+      "close": "Cerrar",
+      "copy": "Copiar al Portapapeles",
+      "download": "Descargar",
+      "import": "Importar Cuestionario",
+      "export": "Exportar Cuestionario",
+      "hideImageOptions": "Ocultar opciones de imagen",
+      "deleteQuestion": "Eliminar pregunta"
+    },
+    "imageUpload": {
+      "title": "Imagen de la Pregunta",
+      "clickToUpload": "Haz clic para subir",
+      "dragAndDrop": "o arrastra y suelta",
+      "fileTypes": "PNG, JPG o GIF"
+    },
+    "json": {
+      "title": "Salida JSON",
+      "fullTitle": "JSON del Cuestionario Completo",
+      "pageTitle": "Salida JSON: {title}",
+      "copied": "¡JSON copiado al portapapeles!",
+      "downloadTitle": "Descargar como archivo"
+    },
+    "alerts": {
+      "importSuccess": "¡Cuestionario importado exitosamente!",
+      "importError": "Error al importar el cuestionario. Por favor verifica el formato del archivo.",
+      "exportError": "Error al generar el archivo de exportación"
+    },
+    "page": {
+      "title": "Página {{number}}",
+      "deleteTitle": "Eliminar página"
+    },
+    "fillInTheBlank": {
+      "instruction": "Pregunta (usa \"_____\" para marcar el espacio)",
+      "placeholder": "Ingresa la pregunta con _____",
+      "correctAnswer": "Respuesta Correcta",
+      "answerPlaceholder": "Ingresa la respuesta correcta"
+    },
+    "multipleResponse": {
+      "optionsLabel": "Opciones (selecciona todas las que correspondan)",
+      "optionPlaceholder": "Opción {{number}}",
+      "removeOption": "Eliminar opción",
+      "dragHandle": "Arrastrar opción"
+    }
+  }
+} 

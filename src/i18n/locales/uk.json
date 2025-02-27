@@ -1,0 +1,75 @@
+{
+  "questionBuilder": {
+    "title": "Конструктор питань",
+    "questionType": "Тип питання",
+    "questionNumber": "Питання {{number}}",
+    "types": {
+      "multipleChoice": "Вибір з варіантів",
+      "multipleResponse": "Множинний вибір",
+      "fillInTheBlank": "Заповнити пропуск"
+    },
+    "addQuestion": "Додати питання",
+    "addOption": "Додати варіант",
+    "addPage": "Додати сторінку",
+    "noQuestions": "На цій сторінці ще немає питань. Додайте питання, щоб почати!",
+    "question": "Питання",
+    "options": "Варіанти",
+    "questionText": "Текст питання",
+    "enterQuestion": "Введіть ваше питання",
+    "actions": {
+      "delete": "Видалити",
+      "edit": "Редагувати",
+      "viewJson": "Переглянути JSON",
+      "addImage": "Додати зображення",
+      "editImage": "Редагувати зображення",
+      "hideImage": "Приховати",
+      "hideImageOptions": "Приховати налаштування зображення",
+      "deleteQuestion": "Видалити питання",
+      "close": "Закрити",
+      "copy": "Копіювати в буфер",
+      "download": "Завантажити",
+      "import": "Імпортувати тест",
+      "export": "Експортувати тест"
+    },
+    "imageUpload": {
+      "title": "Зображення питання",
+      "clickToUpload": "Натисніть, щоб завантажити",
+      "dragAndDrop": "або перетягніть файл",
+      "fileTypes": "PNG, JPG або GIF",
+      "uploadButton": "Натисніть для завантаження",
+      "dragDropText": "або перетягніть сюди",
+      "supportedFormats": "PNG, JPG або GIF",
+      "removeImage": "Видалити зображення",
+      "editImage": "Змінити зображення",
+      "previewAlt": "Зображення питання"
+    },
+    "json": {
+      "title": "JSON вивід",
+      "fullTitle": "Повний JSON тесту",
+      "pageTitle": "JSON вивід: {title}",
+      "copied": "JSON скопійовано в буфер обміну!",
+      "downloadTitle": "Завантажити як файл"
+    },
+    "alerts": {
+      "importSuccess": "Тест успішно імпортовано!",
+      "importError": "Помилка імпорту тесту. Будь ласка, перевірте формат файлу.",
+      "exportError": "Помилка створення файлу експорту"
+    },
+    "page": {
+      "title": "Сторінка {{number}}",
+      "deleteTitle": "Видалити сторінку"
+    },
+    "fillInTheBlank": {
+      "instruction": "Питання (використовуйте \"_____\" для позначення пропуску)",
+      "placeholder": "Введіть питання з _____",
+      "correctAnswer": "Правильна відповідь",
+      "answerPlaceholder": "Введіть правильну відповідь"
+    },
+    "multipleResponse": {
+      "optionsLabel": "Варіанти (виберіть усі правильні)",
+      "optionPlaceholder": "Варіант {{number}}",
+      "removeOption": "Видалити варіант",
+      "dragHandle": "Перетягнути варіант"
+    }
+  }
+} 

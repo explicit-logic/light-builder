@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Droppable, Draggable } from 'react-beautiful-dnd';
 import { Question } from '../../types';
 
@@ -8,6 +9,8 @@ interface MultipleResponseProps {
 }
 
 function MultipleResponse({ question, updateQuestion }: MultipleResponseProps) {
+  const { t } = useTranslation();
+
   const updateQuestionText = (e: React.ChangeEvent<HTMLInputElement>) => {
     updateQuestion({ text: e.target.value });
   };
@@ -55,20 +58,20 @@ function MultipleResponse({ question, updateQuestion }: MultipleResponseProps) {
     <div>
       <div className="mb-4">
         <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-          Question Text
+          {t('questionBuilder.questionText')}
         </label>
         <input
           type="text"
           value={question.text}
           onChange={updateQuestionText}
-          placeholder="Enter your question"
+          placeholder={t('questionBuilder.enterQuestion')}
           className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
         />
       </div>
 
       <div className="mb-4">
         <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-          Options (Select all that apply)
+          {t('questionBuilder.multipleResponse.optionsLabel')}
         </label>
         
         <Droppable droppableId={`options-${question.id}`} type="option">
@@ -89,6 +92,7 @@ function MultipleResponse({ question, updateQuestion }: MultipleResponseProps) {
                       <div
                         {...provided.dragHandleProps}
                         className="cursor-move p-1"
+                        title={t('questionBuilder.multipleResponse.dragHandle')}
                       >
                         <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -105,7 +109,7 @@ function MultipleResponse({ question, updateQuestion }: MultipleResponseProps) {
                           type="text"
                           value={option.text}
                           onChange={(e) => updateOptionText(option.id, e.target.value)}
-                          placeholder={`Option ${index + 1}`}
+                          placeholder={t('questionBuilder.multipleResponse.optionPlaceholder', { number: index + 1 })}
                           className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                         />
                       </div>
@@ -114,7 +118,7 @@ function MultipleResponse({ question, updateQuestion }: MultipleResponseProps) {
                         <button
                           onClick={() => removeOption(option.id)}
                           className="text-red-500 hover:text-red-700 p-1 focus:outline-none focus:ring-2 focus:ring-red-300 rounded-lg"
-                          aria-label="Remove option"
+                          aria-label={t('questionBuilder.multipleResponse.removeOption')}
                         >
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -134,7 +138,7 @@ function MultipleResponse({ question, updateQuestion }: MultipleResponseProps) {
           onClick={addOption}
           className="mt-2 text-blue-700 hover:text-blue-800 focus:ring-2 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-1.5 dark:text-blue-500 dark:hover:text-blue-400 focus:outline-none"
         >
-          + Add Option
+          + {t('questionBuilder.addOption')}
         </button>
       </div>
     </div>

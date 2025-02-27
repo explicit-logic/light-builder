@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import MultipleChoice from './QuestionTypes/MultipleChoice';
 import MultipleResponse from './QuestionTypes/MultipleResponse';
@@ -13,6 +14,7 @@ interface QuestionBuilderProps {
 }
 
 function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
+  const { t } = useTranslation();
   const [questionType, setQuestionType] = useState<Question['type']>('multipleChoice');
   const [showImageUpload, setShowImageUpload] = useState<Record<string, boolean>>({});
   const [showJsonOutput, setShowJsonOutput] = useState<boolean>(false);
@@ -20,7 +22,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
   
   // State for pages and active page
   const [pages, setPages] = useState<Page[]>([
-    { id: 'page-1', title: 'Page 1', questions: [] }
+    { id: 'page-1', title: t('questionBuilder.page.title', { number: 1 }), questions: [] }
   ]);
   const [activePage, setActivePage] = useState<string>('page-1');
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
@@ -64,7 +66,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
     const json = generateCurrentPageJson();
     navigator.clipboard.writeText(json)
       .then(() => {
-        alert('JSON copied to clipboard!');
+        alert(t('questionBuilder.json.copied'));
       })
       .catch(err => {
         console.error('Failed to copy JSON: ', err);
@@ -130,7 +132,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Failed to generate zip file:', error);
-      alert('Failed to generate export file');
+      alert(t('questionBuilder.alerts.exportError'));
     }
   };
 
@@ -139,7 +141,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
     const newPageId = `page-${Date.now()}`;
     const newPage: Page = {
       id: newPageId,
-      title: `Page ${pages.length + 1}`,
+      title: t('questionBuilder.page.title', { number: pages.length + 1 }),
       questions: []
     };
     setPages([...pages, newPage]);
@@ -167,7 +169,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
     // If no pages left, create a new one
     if (updatedPages.length === 0) {
       const newPageId = `page-${Date.now()}`;
-      setPages([{ id: newPageId, title: 'Page 1', questions: [] }]);
+      setPages([{ id: newPageId, title: t('questionBuilder.page.title', { number: 1 }), questions: [] }]);
       setActivePage(newPageId);
     } else {
       setPages(updatedPages);
@@ -423,10 +425,10 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
       // Reset file input
       event.target.value = '';
       
-      alert('Quiz imported successfully!');
+      alert(t('questionBuilder.alerts.importSuccess'));
     } catch (error) {
       console.error('Failed to import quiz:', error);
-      alert('Failed to import quiz. Please check the file format.');
+      alert(t('questionBuilder.alerts.importError'));
     }
   };
 
@@ -434,14 +436,13 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
       <div className="mb-6">
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">Question Builder</h2>
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">{t('questionBuilder.title')}</h2>
           <div className="flex gap-2">
-            {/* Add Import button */}
             <label className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none dark:focus:ring-blue-700 flex items-center cursor-pointer">
               <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
               </svg>
-              Import Quiz
+              {t('questionBuilder.actions.import')}
               <input
                 type="file"
                 accept=".zip"
@@ -452,35 +453,35 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
             <button
               onClick={handleExportQuizAsZip}
               className="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2 dark:bg-green-500 dark:hover:bg-green-600 focus:outline-none dark:focus:ring-green-700 flex items-center"
-              title="Export quiz pages as ZIP archive"
+              title={t('questionBuilder.actions.export')}
             >
               <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Export Quiz
+              {t('questionBuilder.actions.export')}
             </button>
           </div>
         </div>
         <div className="flex flex-col sm:flex-row gap-4 mb-4">
           <div className="flex-1">
             <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-              Question Type
+              {t('questionBuilder.questionType')}
             </label>
             <select
               value={questionType}
               onChange={(e) => setQuestionType(e.target.value as Question['type'])}
               className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
             >
-              <option value="multipleChoice">Multiple Choice</option>
-              <option value="multipleResponse">Multiple Response</option>
-              <option value="fillInTheBlank">Fill in the Blank</option>
+              <option value="multipleChoice">{t('questionBuilder.types.multipleChoice')}</option>
+              <option value="multipleResponse">{t('questionBuilder.types.multipleResponse')}</option>
+              <option value="fillInTheBlank">{t('questionBuilder.types.fillInTheBlank')}</option>
             </select>
           </div>
           <button
             onClick={addQuestion}
             className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800 self-end"
           >
-            Add Question
+            {t('questionBuilder.addQuestion')}
           </button>
         </div>
       </div>
@@ -556,7 +557,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
                                     deletePage(page.id);
                                   }}
                                   className="p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                                  title="Delete page"
+                                  title={t('questionBuilder.page.deleteTitle')}
                                 >
                                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -578,7 +579,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
                   <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
-                  Add Page
+                  {t('questionBuilder.addPage')}
                 </button>
               </div>
             )}
@@ -593,14 +594,16 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
             <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 {jsonOutputPage === 'full' 
-                  ? 'Full Quiz JSON' 
-                  : `JSON Output: ${pages.find(p => p.id === jsonOutputPage)?.title}`}
+                  ? t('questionBuilder.json.fullTitle')
+                  : t('questionBuilder.json.pageTitle', { 
+                      title: pages.find(p => p.id === jsonOutputPage)?.title 
+                    })}
               </h3>
               <div className="flex space-x-2">
                 <button
                   onClick={copyJsonToClipboard}
                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 p-1"
-                  title="Copy to clipboard"
+                  title={t('questionBuilder.actions.copy')}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
@@ -609,7 +612,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
                 <button
                   onClick={jsonOutputPage === 'full' ? exportFullQuiz : exportJsonAsFile}
                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 p-1"
-                  title="Download as file"
+                  title={t('questionBuilder.json.downloadTitle')}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -618,7 +621,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
                 <button
                   onClick={() => setShowJsonOutput(false)}
                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 p-1"
-                  title="Close"
+                  title={t('questionBuilder.actions.close')}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -638,7 +641,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
                 onClick={() => setShowJsonOutput(false)}
                 className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg text-sm font-medium"
               >
-                Close
+                {t('questionBuilder.actions.close')}
               </button>
             </div>
           </div>
@@ -656,7 +659,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
               {activePageQuestions.length === 0 ? (
                 <div className="flex items-center justify-center p-8 text-center border-2 border-dashed rounded-lg border-gray-300 dark:border-gray-600">
                   <p className="text-gray-500 dark:text-gray-400">
-                    No questions on this page yet. Add a question to get started!
+                    {t('questionBuilder.noQuestions')}
                   </p>
                 </div>
               ) : (
@@ -682,23 +685,23 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
                             </svg>
                           </div>
                           <span className="font-medium text-gray-700 dark:text-gray-300">
-                            Question {index + 1}
+                            {t('questionBuilder.questionNumber', { number: index + 1 })}
                           </span>
                           <div className="flex items-center space-x-2">
                             <button
                               onClick={() => toggleImageUpload(question.id)}
                               className="text-blue-500 hover:text-blue-700 p-1 focus:outline-none focus:ring-2 focus:ring-blue-300 rounded-lg flex items-center"
-                              aria-label={question.image || showImageUpload[question.id] ? "Hide image options" : "Add image"}
+                              aria-label={question.image || showImageUpload[question.id] ? t('questionBuilder.actions.hideImageOptions') : t('questionBuilder.actions.addImage')}
                             >
                               <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                               </svg>
-                              {question.image ? "Edit Image" : (showImageUpload[question.id] ? "Hide" : "Add Image")}
+                              {question.image ? t('questionBuilder.actions.editImage') : (showImageUpload[question.id] ? t('questionBuilder.actions.hideImage') : t('questionBuilder.actions.addImage'))}
                             </button>
                             <button
                               onClick={() => deleteQuestion(question.id)}
                               className="text-red-500 hover:text-red-700 p-1 focus:outline-none focus:ring-2 focus:ring-red-300 rounded-lg"
-                              aria-label="Delete question"
+                              aria-label={t('questionBuilder.actions.deleteQuestion')}
                             >
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -712,20 +715,20 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
                           <div className="mb-4 p-3 border border-gray-200 dark:border-gray-600 rounded-lg">
                             <div className="flex flex-col gap-2">
                               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Question Image
+                                {t('questionBuilder.imageUpload.title')}
                               </label>
                               
                               {question.image ? (
                                 <div className="relative">
                                   <img 
                                     src={question.image} 
-                                    alt="Question" 
+                                    alt={t('questionBuilder.imageUpload.previewAlt')}
                                     className="max-h-64 max-w-full rounded-lg object-contain"
                                   />
                                   <button
                                     onClick={() => removeImage(question.id)}
                                     className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-300"
-                                    aria-label="Remove image"
+                                    aria-label={t('questionBuilder.imageUpload.removeImage')}
                                   >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -740,10 +743,10 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                                       </svg>
                                       <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                                        <span className="font-semibold">Click to upload</span> or drag and drop
+                                        <span className="font-semibold">{t('questionBuilder.imageUpload.clickToUpload')}</span> {t('questionBuilder.imageUpload.dragAndDrop')}
                                       </p>
                                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                                        PNG, JPG or GIF
+                                        {t('questionBuilder.imageUpload.fileTypes')}
                                       </p>
                                     </div>
                                     <input 

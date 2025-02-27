@@ -1,0 +1,69 @@
+{
+  "questionBuilder": {
+    "title": "Question Builder",
+    "questionType": "Question Type",
+    "questionNumber": "Question {{number}}",
+    "types": {
+      "multipleChoice": "Multiple Choice",
+      "multipleResponse": "Multiple Response",
+      "fillInTheBlank": "Fill in the Blank"
+    },
+    "addQuestion": "Add Question",
+    "addOption": "Add Option",
+    "addPage": "Add Page",
+    "noQuestions": "No questions on this page yet. Add a question to get started!",
+    "question": "Question",
+    "options": "Options",
+    "questionText": "Question Text",
+    "enterQuestion": "Enter your question",
+    "actions": {
+      "delete": "Delete",
+      "edit": "Edit",
+      "viewJson": "View JSON",
+      "addImage": "Add Image",
+      "editImage": "Edit Image",
+      "hideImage": "Hide",
+      "close": "Close",
+      "copy": "Copy to Clipboard",
+      "download": "Download",
+      "import": "Import Quiz",
+      "export": "Export Quiz",
+      "hideImageOptions": "Hide image options",
+      "deleteQuestion": "Delete question"
+    },
+    "imageUpload": {
+      "title": "Question Image",
+      "clickToUpload": "Click to upload",
+      "dragAndDrop": "or drag and drop",
+      "fileTypes": "PNG, JPG or GIF"
+    },
+    "json": {
+      "title": "JSON Output",
+      "fullTitle": "Full Quiz JSON",
+      "pageTitle": "JSON Output: {title}",
+      "copied": "JSON copied to clipboard!",
+      "downloadTitle": "Download as file"
+    },
+    "alerts": {
+      "importSuccess": "Quiz imported successfully!",
+      "importError": "Failed to import quiz. Please check the file format.",
+      "exportError": "Failed to generate export file"
+    },
+    "page": {
+      "title": "Page {{number}}",
+      "deleteTitle": "Delete page"
+    },
+    "fillInTheBlank": {
+      "instruction": "Question (use \"_____\" to mark the blank)",
+      "placeholder": "Enter question with _____",
+      "correctAnswer": "Correct Answer",
+      "answerPlaceholder": "Enter the correct answer"
+    },
+    "multipleResponse": {
+      "optionsLabel": "Options (select all that apply)",
+      "optionPlaceholder": "Option {{number}}",
+      "removeOption": "Remove option",
+      "dragHandle": "Drag option"
+    }
+  }
+} 
