@@ -1,21 +1,15 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import MultipleChoice from './QuestionTypes/MultipleChoice';
 import MultipleResponse from './QuestionTypes/MultipleResponse';
 import FillInTheBlank from './QuestionTypes/FillInTheBlank';
-import { Question } from '../types';
-import JSZip from 'jszip';
+import { Question, Page } from '../types';
+import { generateFullQuizJson, generatePageJson, exportQuizAsZip } from '../utils/quizExport';
+import { importQuizFromZip } from '../utils/quizImport';
 
 interface QuestionBuilderProps {
   questions: Question[];
   setQuestions: (questions: Question[]) => void;
-}
-
-// Define a Page interface to organize questions
-interface Page {
-  id: string;
-  title: string;
-  questions: string[]; // Array of question IDs
 }
 
 function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
@@ -38,7 +32,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
     return page && page.questions.includes(q.id);
   });
 
-  // Function to get questions for a specific page
+  // Get questions for a specific page
   const getQuestionsForPage = (pageId: string) => {
     const page = pages.find(p => p.id === pageId);
     if (!page) return [];
@@ -46,31 +40,11 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
     return questions.filter(q => page.questions.includes(q.id));
   };
 
-  // Generate JSON output for a page
-  const generatePageJson = (pageId: string) => {
-    const page = pages.find(p => p.id === pageId);
-    if (!page) return '{}';
-    
-    const pageQuestions = getQuestionsForPage(pageId);
-    
-    const pageData = {
-      id: page.id,
-      title: page.title,
-      questions: pageQuestions.map(q => {
-        // Create a clean version of the question without circular references
-        // and without the blob URLs for images (which won't work when exported)
-        const cleanQuestion = { ...q };
-        
-        // Replace blob URLs with a placeholder
-        if (cleanQuestion.image && cleanQuestion.image.startsWith('blob:')) {
-          cleanQuestion.image = '[Image data not included in JSON]';
-        }
-        
-        return cleanQuestion;
-      })
-    };
-    
-    return JSON.stringify(pageData, null, 2);
+  // Generate JSON for the current page
+  const generateCurrentPageJson = () => {
+    if (!jsonOutputPage) return '{}';
+    const currentPage = pages.find(p => p.id === jsonOutputPage);
+    return generatePageJson(jsonOutputPage, currentPage, getQuestionsForPage);
   };
 
   // Toggle JSON output display
@@ -87,7 +61,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
   const copyJsonToClipboard = () => {
     if (!jsonOutputPage) return;
     
-    const json = generatePageJson(jsonOutputPage);
+    const json = generateCurrentPageJson();
     navigator.clipboard.writeText(json)
       .then(() => {
         alert('JSON copied to clipboard!');
@@ -101,7 +75,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
   const exportJsonAsFile = () => {
     if (!jsonOutputPage) return;
     
-    const json = generatePageJson(jsonOutputPage);
+    const json = generateCurrentPageJson();
     const page = pages.find(p => p.id === jsonOutputPage);
     const fileName = page ? `${page.title.replace(/\s+/g, '_')}.json` : 'page.json';
     
@@ -117,6 +91,47 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
     // Clean up
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  // Export full quiz as JSON file
+  const exportFullQuiz = () => {
+    const json = generateFullQuizJson(pages, getQuestionsForPage);
+    const fileName = 'full_quiz.json';
+    
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    
+    // Clean up
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Export quiz as ZIP archive
+  const handleExportQuizAsZip = async () => {
+    try {
+      const content = await exportQuizAsZip(pages, getQuestionsForPage);
+      
+      // Create download link
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'quiz_export.zip';
+      document.body.appendChild(a);
+      a.click();
+      
+      // Clean up
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to generate zip file:', error);
+      alert('Failed to generate export file');
+    }
   };
 
   // Add a new page
@@ -392,149 +407,26 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
     }
   };
 
-  // Function to get all pages with their questions as a complete quiz
-  const generateFullQuizJson = () => {
-    const quizData = {
-      pages: pages.map(page => {
-        const pageQuestions = getQuestionsForPage(page.id);
-        
-        return {
-          id: page.id,
-          title: page.title,
-          questions: pageQuestions.map(q => {
-            // Create a clean version of the question without circular references
-            // and without the blob URLs for images (which won't work when exported)
-            const cleanQuestion = { ...q };
-            
-            // Replace blob URLs with a placeholder
-            if (cleanQuestion.image && cleanQuestion.image.startsWith('blob:')) {
-              cleanQuestion.image = '[Image data not included in JSON]';
-            }
-            
-            return cleanQuestion;
-          })
-        };
-      })
-    };
-    
-    return JSON.stringify(quizData, null, 2);
-  };
-
-  // Export full quiz as JSON file
-  const exportFullQuiz = () => {
-    const json = generateFullQuizJson();
-    const fileName = 'full_quiz.json';
-    
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    
-    // Clean up
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  // Add this helper function to fetch and convert blob URLs to array buffers
-  const fetchImageAsBuffer = async (blobUrl: string): Promise<ArrayBuffer | null> => {
-    try {
-      const response = await fetch(blobUrl);
-      const blob = await response.blob();
-      return await blob.arrayBuffer();
-    } catch (error) {
-      console.error('Failed to fetch image:', error);
-      return null;
-    }
-  };
-
-  // Export quiz as ZIP archive containing JSON files and images for each page
-  const exportQuizAsZip = async () => {
-    const zip = new JSZip();
-    
-    // Create a folder for the quiz
-    const quizFolder = zip.folder("quiz");
-    if (!quizFolder) return;
-
-    // Process each page
-    for (const page of pages) {
-      // Create a folder for this page
-      const pageFolder = quizFolder.folder(`page_${page.id}`);
-      if (!pageFolder) continue;
-
-      // Get the questions for this page
-      const pageQuestions = getQuestionsForPage(page.id);
-      
-      // Create assets folder for images
-      const assetsFolder = pageFolder.folder("assets");
-      if (!assetsFolder) continue;
-
-      // Process and store images, update question references
-      const processedQuestions = await Promise.all(pageQuestions.map(async (question) => {
-        const cleanQuestion = { ...question };
-        
-        if (cleanQuestion.image && cleanQuestion.image.startsWith('blob:')) {
-          // Generate a filename for the image
-          const imageExtension = 'png'; // Default extension, you might want to detect actual type
-          const imageFileName = `question_${question.id}_image.${imageExtension}`;
-          
-          // Fetch and store the image
-          const imageBuffer = await fetchImageAsBuffer(cleanQuestion.image);
-          if (imageBuffer) {
-            assetsFolder.file(imageFileName, imageBuffer);
-            // Update the image reference in the question
-            cleanQuestion.image = `assets/${imageFileName}`;
-          } else {
-            cleanQuestion.image = null;
-          }
-        }
-        
-        return cleanQuestion;
-      }));
-
-      // Create the page JSON with processed questions
-      const pageData = {
-        id: page.id,
-        title: page.title,
-        questions: processedQuestions
-      };
-      
-      // Add the page config file
-      pageFolder.file("page_config.json", JSON.stringify(pageData, null, 2));
-    }
-
-    // Add a manifest file with quiz structure
-    const manifest = {
-      totalPages: pages.length,
-      pageOrder: pages.map(page => ({
-        id: page.id,
-        title: page.title,
-        configFile: `page_${page.id}/page_config.json`
-      }))
-    };
-    quizFolder.file("manifest.json", JSON.stringify(manifest, null, 2));
+  // Handle quiz import
+  const handleImportQuiz = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
     try {
-      // Generate the zip file
-      const content = await zip.generateAsync({ type: "blob" });
+      const { pages: newPages, questions: newQuestions } = await importQuizFromZip(file);
       
-      // Create download link
-      const url = URL.createObjectURL(content);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'quiz_export.zip';
-      document.body.appendChild(a);
-      a.click();
+      // Update state
+      setQuestions(newQuestions);
+      setPages(newPages);
+      setActivePage(newPages[0]?.id || 'page-1');
+
+      // Reset file input
+      event.target.value = '';
       
-      // Clean up
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      alert('Quiz imported successfully!');
     } catch (error) {
-      console.error('Failed to generate zip file:', error);
-      alert('Failed to generate export file');
+      console.error('Failed to import quiz:', error);
+      alert('Failed to import quiz. Please check the file format.');
     }
   };
 
@@ -543,16 +435,31 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
       <div className="mb-6">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">Question Builder</h2>
-          <button
-            onClick={exportQuizAsZip}
-            className="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2 dark:bg-green-500 dark:hover:bg-green-600 focus:outline-none dark:focus:ring-green-700 flex items-center"
-            title="Export quiz pages as ZIP archive"
-          >
-            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Export Quiz
-          </button>
+          <div className="flex gap-2">
+            {/* Add Import button */}
+            <label className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none dark:focus:ring-blue-700 flex items-center cursor-pointer">
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Import Quiz
+              <input
+                type="file"
+                accept=".zip"
+                onChange={handleImportQuiz}
+                className="hidden"
+              />
+            </label>
+            <button
+              onClick={handleExportQuizAsZip}
+              className="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2 dark:bg-green-500 dark:hover:bg-green-600 focus:outline-none dark:focus:ring-green-700 flex items-center"
+              title="Export quiz pages as ZIP archive"
+            >
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Export Quiz
+            </button>
+          </div>
         </div>
         <div className="flex flex-col sm:flex-row gap-4 mb-4">
           <div className="flex-1">
@@ -722,8 +629,8 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
             <div className="p-4 overflow-auto max-h-[calc(80vh-4rem)]">
               <pre className="bg-gray-100 dark:bg-gray-900 p-4 rounded-lg text-sm overflow-auto max-h-[60vh]">
                 {jsonOutputPage === 'full' 
-                  ? generateFullQuizJson() 
-                  : generatePageJson(jsonOutputPage)}
+                  ? generateFullQuizJson(pages, getQuestionsForPage) 
+                  : generateCurrentPageJson()}
               </pre>
             </div>
             <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">

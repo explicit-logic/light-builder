@@ -13,4 +13,10 @@ export interface Question {
   options?: Option[];
   answer?: string;
   image: string | null;
+}
+
+export interface Page {
+  id: string;
+  title: string;
+  questions: string[]; // Array of question IDs
 } 
