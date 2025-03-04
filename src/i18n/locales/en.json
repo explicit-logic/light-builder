@@ -1,6 +1,7 @@
 {
   "questionBuilder": {
     "title": "Question Builder",
+    "quizName": "My Quiz",
     "questionType": "Question Type",
     "questionNumber": "Question {{number}}",
     "types": {
@@ -19,6 +20,7 @@
     "actions": {
       "delete": "Delete",
       "edit": "Edit",
+      "editTitle": "Edit title",
       "viewJson": "View JSON",
       "addImage": "Add Image",
       "editImage": "Edit Image",

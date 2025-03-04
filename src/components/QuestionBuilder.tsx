@@ -4,6 +4,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautif
 import MultipleChoice from './QuestionTypes/MultipleChoice';
 import MultipleResponse from './QuestionTypes/MultipleResponse';
 import FillInTheBlank from './QuestionTypes/FillInTheBlank';
+import QuizTitle from './QuizTitle';
 import { Question, Page } from '../types';
 import { generateFullQuizJson, generatePageJson, exportQuizAsZip } from '../utils/quizExport';
 import { importQuizFromZip } from '../utils/quizImport';
@@ -27,6 +28,8 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
   const [activePage, setActivePage] = useState<string>('page-1');
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
   const [editingPageTitle, setEditingPageTitle] = useState<string>('');
+  const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false);
+  const [quizName, setQuizName] = useState<string>(t('questionBuilder.quizName'));
 
   // Get questions for the active page
   const activePageQuestions = questions.filter(q => {
@@ -436,11 +439,16 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
       <div className="mb-6">
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">{t('questionBuilder.title')}</h2>
+          <QuizTitle
+            quizName={quizName}
+            isEditingTitle={isEditingTitle}
+            setQuizName={setQuizName}
+            setIsEditingTitle={setIsEditingTitle}
+          />
           <div className="flex gap-2">
             <label className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none dark:focus:ring-blue-700 flex items-center cursor-pointer">
               <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
               {t('questionBuilder.actions.import')}
               <input
@@ -456,7 +464,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
               title={t('questionBuilder.actions.export')}
             >
               <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
               </svg>
               {t('questionBuilder.actions.export')}
             </button>

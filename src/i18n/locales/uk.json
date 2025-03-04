@@ -1,6 +1,7 @@
 {
   "questionBuilder": {
     "title": "Конструктор питань",
+    "quizName": "Мій тест",
     "questionType": "Тип питання",
     "questionNumber": "Питання {{number}}",
     "types": {
@@ -19,6 +20,7 @@
     "actions": {
       "delete": "Видалити",
       "edit": "Редагувати",
+      "editTitle": "Редагувати заголовок",
       "viewJson": "Переглянути JSON",
       "addImage": "Додати зображення",
       "editImage": "Редагувати зображення",
