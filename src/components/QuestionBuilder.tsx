@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DndContext,
@@ -22,10 +22,189 @@ import MultipleChoice from './QuestionTypes/MultipleChoice';
 import MultipleResponse from './QuestionTypes/MultipleResponse';
 import FillInTheBlank from './QuestionTypes/FillInTheBlank';
 import QuizTitle from './QuizTitle';
-import QuizDescription from './QuizDescription';
 import { Question, Page } from '../types';
 import { generateFullQuizJson, generatePageJson, exportQuizAsZip } from '../utils/quizExport';
 import { importQuizFromZip } from '../utils/quizImport';
+
+interface DescriptionButtonProps {
+  showDescription: boolean;
+  setShowDescription: (show: boolean) => void;
+  quizDescription: string;
+  setQuizDescription: (description: string) => void;
+}
+
+const DescriptionButton: React.FC<DescriptionButtonProps> = ({
+  showDescription,
+  setShowDescription,
+  quizDescription,
+  setQuizDescription
+}) => {
+  const { t } = useTranslation();
+  const descriptionRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (descriptionRef.current && !descriptionRef.current.contains(event.target as Node)) {
+        setShowDescription(false);
+      }
+    };
+
+    if (showDescription) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDescription, setShowDescription]);
+
+  const hasDescription = quizDescription.trim().length > 0;
+
+  return (
+    <div className="relative" ref={descriptionRef} >
+      <button
+        onClick={() => setShowDescription(!showDescription)}
+        className={`flex items-center space-x-1 rounded-lg text-sm font-medium ${
+          hasDescription
+            ? 'text-blue-600 hover:text-blue-700 dark:text-blue-500 dark:hover:text-blue-400'
+            : 'text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+        }`}
+        title={t('questionBuilder.description.toggle')}
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+        </svg>
+        <span className={`${hasDescription ? '' : 'hidden'} w-2 h-2 bg-blue-500 rounded-full absolute -top-1 -right-1`}></span>
+      </button>
+
+      {showDescription && (
+        <div className="absolute z-10 mt-2 w-96 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+          <div className="p-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {t('questionBuilder.description.label')}
+            </label>
+            <textarea
+              value={quizDescription}
+              onChange={(e) => setQuizDescription(e.target.value)}
+              className="block w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md dark:text-white dark:bg-gray-700 min-h-[100px] resize-y"
+              placeholder={t('questionBuilder.description.placeholder')}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+interface TimerButtonProps {
+  showTimer: boolean;
+  setShowTimer: (show: boolean) => void;
+  pageTimeLimit: number | null;
+  globalTimeLimit: number | null;
+  setPageTimeLimit: (timeLimit: number | null) => void;
+  setGlobalTimeLimit: (timeLimit: number | null) => void;
+}
+
+const TimerButton: React.FC<TimerButtonProps> = ({
+  showTimer,
+  setShowTimer,
+  pageTimeLimit,
+  globalTimeLimit,
+  setPageTimeLimit,
+  setGlobalTimeLimit
+}) => {
+  const { t } = useTranslation();
+  const timerRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (timerRef.current && !timerRef.current.contains(event.target as Node)) {
+        setShowTimer(false);
+      }
+    };
+
+    if (showTimer) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showTimer, setShowTimer]);
+
+  const handleGlobalTimeChange = (minutes: number) => {
+    setGlobalTimeLimit(minutes || null);
+    setPageTimeLimit(null); // Clear page limit when setting global limit
+  };
+
+  const handlePageTimeChange = (minutes: number) => {
+    setPageTimeLimit(minutes || null);
+    setGlobalTimeLimit(null); // Clear global limit when setting page limit
+  };
+
+  const hasTimeLimit = globalTimeLimit !== null || pageTimeLimit !== null;
+
+  return (
+    <div className="relative" ref={timerRef}>
+      <button
+        onClick={() => setShowTimer(!showTimer)}
+        className={`flex items-center space-x-1 rounded-lg text-sm font-medium ${
+          hasTimeLimit
+            ? 'text-green-600 hover:text-green-700 dark:text-green-500 dark:hover:text-green-400'
+            : 'text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+        }`}
+        title={t('questionBuilder.timer.toggle')}
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        {hasTimeLimit && (
+          <span className="w-2 h-2 bg-green-500 rounded-full absolute -top-1 -right-1"></span>
+        )}
+      </button>
+
+      {showTimer && (
+        <div className="absolute z-10 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+          <div className="p-4 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {t('questionBuilder.timer.globalLimit')}
+              </label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="number"
+                  min="0"
+                  value={globalTimeLimit || ''}
+                  onChange={(e) => handleGlobalTimeChange(parseInt(e.target.value))}
+                  className="block w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md dark:text-white dark:bg-gray-700"
+                  placeholder={t('questionBuilder.timer.minutesPlaceholder')}
+                />
+                <span className="text-sm text-gray-500 dark:text-gray-400">min</span>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {t('questionBuilder.timer.pageLimit')}
+              </label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="number"
+                  min="0"
+                  value={pageTimeLimit || ''}
+                  onChange={(e) => handlePageTimeChange(parseInt(e.target.value))}
+                  className="block w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md dark:text-white dark:bg-gray-700"
+                  placeholder={t('questionBuilder.timer.minutesPlaceholder')}
+                />
+                <span className="text-sm text-gray-500 dark:text-gray-400">min</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface QuestionBuilderProps {
   questions: Record<string, Question>;
@@ -88,6 +267,9 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
   const [quizName, setQuizName] = useState<string>(t('questionBuilder.quizName'));
   const [quizDescription, setQuizDescription] = useState<string>('');
   const [showDescription, setShowDescription] = useState<boolean>(false);
+  const [showTimer, setShowTimer] = useState<boolean>(false);
+  const [pageTimeLimit, setPageTimeLimit] = useState<number | null>(null);
+  const [globalTimeLimit, setGlobalTimeLimit] = useState<number | null>(null);
 
   // Get questions for the active page
   const activePageQuestionIds = pages.find(p => p.id === activePage)?.questions ?? [];
@@ -105,7 +287,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
   const generateCurrentPageJson = () => {
     if (!jsonOutputPage) return '{}';
     const currentPage = pages.find(p => p.id === jsonOutputPage);
-    return generatePageJson(jsonOutputPage, currentPage, getQuestionsForPage);
+    return generatePageJson(jsonOutputPage, currentPage, getQuestionsForPage, pageTimeLimit);
   };
 
   // Toggle JSON output display
@@ -156,7 +338,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
 
   // Export full quiz as JSON file
   const exportFullQuiz = () => {
-    const json = generateFullQuizJson(pages, getQuestionsForPage);
+    const json = generateFullQuizJson(pages, getQuestionsForPage, { globalTimeLimit, pageTimeLimit });
     const fileName = 'full_quiz.json';
     
     const blob = new Blob([json], { type: 'application/json' });
@@ -176,7 +358,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
   // Export quiz as ZIP archive
   const handleExportQuizAsZip = async () => {
     try {
-      const content = await exportQuizAsZip(pages, getQuestionsForPage);
+      const content = await exportQuizAsZip(pages, getQuestionsForPage, { globalTimeLimit, pageTimeLimit });
       
       // Create download link
       const url = URL.createObjectURL(content);
@@ -436,12 +618,14 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
     if (!file) return;
 
     try {
-      const { pages: newPages, questions: newQuestions } = await importQuizFromZip(file);
+      const { pages: newPages, questions: newQuestions, globalTimeLimit: newGlobalTimeLimit, pageTimeLimit: newPageTimeLimit } = await importQuizFromZip(file);
       
       // Update state
       setQuestions(newQuestions);
       setPages(newPages);
       setActivePage(newPages[0]?.id || 'page-1');
+      setGlobalTimeLimit(newGlobalTimeLimit);
+      setPageTimeLimit(newPageTimeLimit);
 
       // Reset file input
       event.target.value = '';
@@ -458,20 +642,31 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
         <div className="mb-6 space-y-6">
           <div className="flex justify-between items-start">
-            <div className="flex flex-col gap-2 flex-grow max-w-[calc(100%-180px)]">
-              <QuizTitle
-                quizName={quizName}
-                isEditingTitle={isEditingTitle}
-                setQuizName={setQuizName}
-                setIsEditingTitle={setIsEditingTitle}
-                showDescription={showDescription}
-                setShowDescription={setShowDescription}
-              />
-              <QuizDescription
-                quizDescription={quizDescription}
-                setQuizDescription={setQuizDescription}
-                showDescription={showDescription}
-              />
+            <div className="flex flex-col gap-2 flex-grow">
+              <div className="flex items-center gap-4">
+                <QuizTitle
+                  quizName={quizName}
+                  isEditingTitle={isEditingTitle}
+                  setQuizName={setQuizName}
+                  setIsEditingTitle={setIsEditingTitle}
+                />
+                <div className="flex items-center space-x-3 flex-shrink-0">
+                  <DescriptionButton
+                    showDescription={showDescription}
+                    setShowDescription={setShowDescription}
+                    quizDescription={quizDescription}
+                    setQuizDescription={setQuizDescription}
+                  />
+                  <TimerButton
+                    showTimer={showTimer}
+                    setShowTimer={setShowTimer}
+                    pageTimeLimit={pageTimeLimit}
+                    globalTimeLimit={globalTimeLimit}
+                    setPageTimeLimit={setPageTimeLimit}
+                    setGlobalTimeLimit={setGlobalTimeLimit}
+                  />
+                </div>
+              </div>
             </div>
             <div className="flex gap-2 flex-shrink-0 ml-4 sticky top-0">
               <label className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none dark:focus:ring-blue-700 flex items-center cursor-pointer whitespace-nowrap">

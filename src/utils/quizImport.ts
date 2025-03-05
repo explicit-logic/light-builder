@@ -5,6 +5,8 @@ import { Question, Page } from '../types';
 export const importQuizFromZip = async (file: File): Promise<{
   pages: Page[];
   questions: Record<string, Question>;
+  globalTimeLimit: number | null;
+  pageTimeLimit: number | null;
 }> => {
   const zip = await JSZip.loadAsync(file);
   const quizFolder = zip.folder("quiz");
@@ -33,7 +35,7 @@ export const importQuizFromZip = async (file: File): Promise<{
     }
 
     const pageConfig = JSON.parse(pageConfigFile);
-    
+
     // Process questions and their images
     await Promise.all(pageConfig.questions.map(async (question: Question) => {
       const newQuestion = { ...question };
@@ -62,5 +64,10 @@ export const importQuizFromZip = async (file: File): Promise<{
     });
   }
 
-  return { pages: newPages, questions: newQuestions };
+  return { 
+    pages: newPages, 
+    questions: newQuestions,
+    globalTimeLimit: manifest.globalTimeLimit || null,
+    pageTimeLimit: manifest.pageTimeLimit || null
+  };
 }; 

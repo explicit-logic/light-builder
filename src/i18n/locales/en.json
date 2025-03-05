@@ -58,6 +58,12 @@
       "title": "Page {{number}}",
       "deleteTitle": "Delete page"
     },
+    "timer": {
+      "toggle": "Toggle time limit settings",
+      "globalLimit": "Global Time Limit",
+      "pageLimit": "Page Time Limit",
+      "minutesPlaceholder": "Enter minutes"
+    },
     "fillInTheBlank": {
       "instruction": "Question (use \"_____\" to mark the blank)",
       "placeholder": "Enter question with _____",
@@ -69,6 +75,11 @@
       "optionPlaceholder": "Option {{number}}",
       "removeOption": "Remove option",
       "dragHandle": "Drag option"
+    },
+    "description": {
+      "toggle": "Toggle quiz description",
+      "label": "Quiz Description",
+      "placeholder": "Enter a description for your quiz..."
     }
   }
 } 

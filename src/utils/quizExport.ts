@@ -13,8 +13,17 @@ const fetchImageAsBuffer = async (blobUrl: string): Promise<ArrayBuffer | null> 
   }
 };
 
+interface TimeLimitOptions {
+  globalTimeLimit: number | null;
+  pageTimeLimit: number | null;
+}
+
 // Function to get all pages with their questions as a complete quiz
-export const generateFullQuizJson = (pages: Page[], getQuestionsForPage: (pageId: string) => Question[]) => {
+export const generateFullQuizJson = (
+  pages: Page[], 
+  getQuestionsForPage: (pageId: string) => Question[],
+  timeLimits?: TimeLimitOptions
+) => {
   const quizData = {
     pages: pages.map(page => {
       const pageQuestions = getQuestionsForPage(page.id);
@@ -35,14 +44,21 @@ export const generateFullQuizJson = (pages: Page[], getQuestionsForPage: (pageId
           return cleanQuestion;
         })
       };
-    })
+    }),
+    globalTimeLimit: timeLimits?.globalTimeLimit || null,
+    pageTimeLimit: timeLimits?.pageTimeLimit || null
   };
   
   return JSON.stringify(quizData, null, 2);
 };
 
 // Function to generate JSON for a single page
-export const generatePageJson = (pageId: string, page: Page | undefined, getQuestionsForPage: (pageId: string) => Question[]) => {
+export const generatePageJson = (
+  pageId: string, 
+  page: Page | undefined, 
+  getQuestionsForPage: (pageId: string) => Question[],
+  timeLimit: number | null
+) => {
   if (!page) return '{}';
   
   const pageQuestions = getQuestionsForPage(pageId);
@@ -50,6 +66,7 @@ export const generatePageJson = (pageId: string, page: Page | undefined, getQues
   const pageData = {
     id: page.id,
     title: page.title,
+    timeLimit: timeLimit,
     questions: pageQuestions.map(q => {
       // Create a clean version of the question without circular references
       // and without the blob URLs for images (which won't work when exported)
@@ -70,7 +87,8 @@ export const generatePageJson = (pageId: string, page: Page | undefined, getQues
 // Export quiz as ZIP archive containing JSON files and images for each page
 export const exportQuizAsZip = async (
   pages: Page[],
-  getQuestionsForPage: (pageId: string) => Question[]
+  getQuestionsForPage: (pageId: string) => Question[],
+  timeLimits?: TimeLimitOptions
 ): Promise<Blob> => {
   const zip = new JSZip();
   
@@ -128,6 +146,8 @@ export const exportQuizAsZip = async (
   // Add a manifest file with quiz structure
   const manifest = {
     totalPages: pages.length,
+    globalTimeLimit: timeLimits?.globalTimeLimit || null,
+    pageTimeLimit: timeLimits?.pageTimeLimit || null,
     pageOrder: pages.map(page => ({
       id: page.id,
       title: page.title,
