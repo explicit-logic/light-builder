@@ -15,6 +15,11 @@ export interface Question {
   image: string | null;
 }
 
+export interface QuestionBuilderProps {
+  questions: Record<string, Question>;
+  setQuestions: (questions: Record<string, Question>) => void;
+}
+
 export interface Page {
   id: string;
   title: string;

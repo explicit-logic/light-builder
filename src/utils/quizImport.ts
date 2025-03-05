@@ -4,7 +4,7 @@ import { Question, Page } from '../types';
 // Import quiz from ZIP file
 export const importQuizFromZip = async (file: File): Promise<{
   pages: Page[];
-  questions: Question[];
+  questions: Record<string, Question>;
 }> => {
   const zip = await JSZip.loadAsync(file);
   const quizFolder = zip.folder("quiz");
@@ -20,7 +20,7 @@ export const importQuizFromZip = async (file: File): Promise<{
 
   const manifest = JSON.parse(manifestFile);
   const newPages: Page[] = [];
-  const newQuestions: Question[] = [];
+  const newQuestions: Record<string, Question> = {};
 
   // Process each page
   for (const pageInfo of manifest.pageOrder) {
@@ -35,7 +35,7 @@ export const importQuizFromZip = async (file: File): Promise<{
     const pageConfig = JSON.parse(pageConfigFile);
     
     // Process questions and their images
-    const processedQuestions = await Promise.all(pageConfig.questions.map(async (question: Question) => {
+    await Promise.all(pageConfig.questions.map(async (question: Question) => {
       const newQuestion = { ...question };
       
       // If question has an image reference, load it
@@ -50,17 +50,15 @@ export const importQuizFromZip = async (file: File): Promise<{
         }
       }
       
-      return newQuestion;
+      // Add question to the questions object
+      newQuestions[question.id] = newQuestion;
     }));
-
-    // Add questions to the new questions array
-    newQuestions.push(...processedQuestions);
 
     // Create the page
     newPages.push({
       id: pageConfig.id,
       title: pageConfig.title,
-      questions: processedQuestions.map(q => q.id)
+      questions: pageConfig.questions.map((q: Question) => q.id)
     });
   }
 

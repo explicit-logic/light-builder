@@ -28,8 +28,8 @@ import { generateFullQuizJson, generatePageJson, exportQuizAsZip } from '../util
 import { importQuizFromZip } from '../utils/quizImport';
 
 interface QuestionBuilderProps {
-  questions: Question[];
-  setQuestions: (questions: Question[]) => void;
+  questions: Record<string, Question>;
+  setQuestions: (questions: Record<string, Question>) => void;
 }
 
 const DragDropProvider: React.FC<{ 
@@ -90,17 +90,15 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
   const [showDescription, setShowDescription] = useState<boolean>(false);
 
   // Get questions for the active page
-  const activePageQuestions = questions.filter(q => {
-    const page = pages.find(p => p.id === activePage);
-    return page && page.questions.includes(q.id);
-  });
+  const activePageQuestionIds = pages.find(p => p.id === activePage)?.questions ?? [];
+  const activePageQuestions = activePageQuestionIds.map(qId => questions[qId]) ?? [];
 
   // Get questions for a specific page
   const getQuestionsForPage = (pageId: string) => {
     const page = pages.find(p => p.id === pageId);
     if (!page) return [];
     
-    return questions.filter(q => page.questions.includes(q.id));
+    return Object.values(questions).filter(q => page.questions.includes(q.id));
   };
 
   // Generate JSON for the current page
@@ -216,7 +214,10 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
     if (!pageToDelete) return;
 
     // Delete the questions
-    const updatedQuestions = questions.filter(q => !pageToDelete.questions.includes(q.id));
+    const updatedQuestions = { ...questions };
+    pageToDelete.questions.forEach(qId => {
+      delete updatedQuestions[qId];
+    });
     setQuestions(updatedQuestions);
 
     // Delete the page
@@ -260,7 +261,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
     const newQuestion: Question = {
       id: `question-${Date.now()}`,
       type: questionType,
-      text: '',
+      text: t('questionBuilder.questionNumber', { number: activePageQuestionIds.length + 1 }),
       options: questionType === 'fillInTheBlank' ? [] : [
         { id: `option-${Date.now()}-1`, text: '', isCorrect: false },
         { id: `option-${Date.now()}-2`, text: '', isCorrect: false },
@@ -269,8 +270,8 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
       image: null,
     };
     
-    // Add the question to the questions array
-    setQuestions([...questions, newQuestion]);
+    // Add the question to the questions object
+    setQuestions({ ...questions, [newQuestion.id]: newQuestion });
     
     // Add the question ID to the active page
     setPages(pages.map(page => 
@@ -281,14 +282,20 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
   };
 
   const updateQuestion = (id: string, updatedQuestion: Partial<Question>) => {
-    setQuestions(
-      questions.map((q) => (q.id === id ? { ...q, ...updatedQuestion } : q))
-    );
+    const currentQuestion = questions[id];
+    if (!currentQuestion) return;
+    
+    setQuestions({
+      ...questions,
+      [id]: { ...currentQuestion, ...updatedQuestion }
+    });
   };
 
   const deleteQuestion = (id: string) => {
-    // Remove the question from the questions array
-    setQuestions(questions.filter((q) => q.id !== id));
+    // Remove the question from the questions object
+    const updatedQuestions = { ...questions };
+    delete updatedQuestions[id];
+    setQuestions(updatedQuestions);
     
     // Remove the question ID from any page that contains it
     setPages(pages.map(page => ({
@@ -357,16 +364,18 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
       const destQuestionId = over.data.current?.questionId;
       
       if (sourceQuestionId === destQuestionId) {
-        const question = questions.find(q => q.id === sourceQuestionId);
+        const question = questions[sourceQuestionId];
         if (question && question.options) {
           const oldIndex = question.options.findIndex(opt => opt.id === activeId);
           const newIndex = question.options.findIndex(opt => opt.id === overId);
           
-          setQuestions(questions.map(q => 
-            q.id === sourceQuestionId
-              ? { ...q, options: arrayMove(q.options!, oldIndex, newIndex) }
-              : q
-          ));
+          setQuestions({
+            ...questions,
+            [sourceQuestionId]: {
+              ...question,
+              options: arrayMove(question.options, oldIndex, newIndex)
+            }
+          });
         }
       }
     }
@@ -385,7 +394,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
 
   const removeImage = (questionId: string) => {
     // Find the question
-    const question = questions.find(q => q.id === questionId);
+    const question = questions[questionId];
     
     // If the question has an image URL created with URL.createObjectURL, revoke it
     if (question?.image && question.image.startsWith('blob:')) {
@@ -404,7 +413,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
     }));
   };
 
-  const renderQuestionComponent = (question: Question, index: number) => {
+  const renderQuestionComponent = (question: Question) => {
     const updateThisQuestion = (updatedQuestion: Partial<Question>) => {
       updateQuestion(question.id, updatedQuestion);
     };
@@ -685,7 +694,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
                 </p>
               </div>
             ) : (
-              activePageQuestions.map((question, index) => (
+              activePageQuestions.map((question) => (
                 <SortableItem
                   key={question.id}
                   id={question.id}
@@ -698,8 +707,8 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                       </DragHandle>
-                      <span className="font-medium text-gray-700 dark:text-gray-300">
-                        {t('questionBuilder.questionNumber', { number: index + 1 })}
+                      <span className="font-medium text-gray-700 dark:text-gray-300 w-lg text-center overflow-ellipsis overflow-hidden whitespace-nowrap">
+                        {question.text}
                       </span>
                       <div className="flex items-center space-x-2">
                         <button
@@ -785,7 +794,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
                       </div>
                     )}
                     
-                    {renderQuestionComponent(question, index)}
+                    {renderQuestionComponent(question)}
                   </div>
                 </SortableItem>
               ))

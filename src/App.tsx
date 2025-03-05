@@ -10,7 +10,7 @@ import './i18n/config';
 function App() {
   const { t } = useTranslation();
   const [darkMode, setDarkMode] = useLocalStorage('darkMode', false);
-  const [questions, setQuestions] = useLocalStorage<Question[]>('questions', []);
+  const [questions, setQuestions] = useLocalStorage<Record<string, Question>>('questions', {});
   const [jsonOutput, setJsonOutput] = useState('');
 
   useEffect(() => {
