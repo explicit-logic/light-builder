@@ -2,6 +2,9 @@
   "questionBuilder": {
     "title": "Question Builder",
     "quizName": "My Quiz",
+    "showDescription": "Show quiz description",
+    "hideDescription": "Hide quiz description",
+    "descriptionPlaceholder": "Enter a description for your quiz...",
     "questionType": "Question Type",
     "questionNumber": "Question {{number}}",
     "types": {

@@ -2,6 +2,9 @@
   "questionBuilder": {
     "title": "Конструктор питань",
     "quizName": "Мій тест",
+    "showDescription": "Показати опис тесту",
+    "hideDescription": "Приховати опис тесту",
+    "descriptionPlaceholder": "Введіть опис для вашого тесту...",
     "questionType": "Тип питання",
     "questionNumber": "Питання {{number}}",
     "types": {
