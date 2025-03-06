@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import toast from 'react-hot-toast';
 import {
   DndContext,
   closestCenter,
@@ -23,8 +24,9 @@ import MultipleResponse from './QuestionTypes/MultipleResponse';
 import FillInTheBlank from './QuestionTypes/FillInTheBlank';
 import QuizTitle from './QuizTitle';
 import { Question, Page } from '../types';
-import { generateFullQuizJson, generatePageJson, exportQuizAsZip } from '../utils/quizExport';
+import { generateFullQuizJson, generatePageJson } from '../utils/quizExport';
 import { importQuizFromZip } from '../utils/quizImport';
+import { handleExportQuizAsZip as exportQuizAsZipHandler } from '../utils/exportHandlers';
 
 interface DescriptionButtonProps {
   showDescription: boolean;
@@ -179,7 +181,7 @@ const TimerButton: React.FC<TimerButtonProps> = ({
                   className="block w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md dark:text-white dark:bg-gray-700"
                   placeholder={t('questionBuilder.timer.minutesPlaceholder')}
                 />
-                <span className="text-sm text-gray-500 dark:text-gray-400">min</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">{t('questionBuilder.timer.min')}</span>
               </div>
             </div>
 
@@ -196,7 +198,7 @@ const TimerButton: React.FC<TimerButtonProps> = ({
                   className="block w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md dark:text-white dark:bg-gray-700"
                   placeholder={t('questionBuilder.timer.minutesPlaceholder')}
                 />
-                <span className="text-sm text-gray-500 dark:text-gray-400">min</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">{t('questionBuilder.timer.min')}</span>
               </div>
             </div>
           </div>
@@ -307,10 +309,13 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
     const json = generateCurrentPageJson();
     navigator.clipboard.writeText(json)
       .then(() => {
-        alert(t('questionBuilder.json.copied'));
+        toast.success(t('questionBuilder.json.copied'), {
+          duration: 2000,
+        });
       })
       .catch(err => {
         console.error('Failed to copy JSON: ', err);
+        toast.error(t('questionBuilder.alerts.copyError'));
       });
   };
 
@@ -338,7 +343,11 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
 
   // Export full quiz as JSON file
   const exportFullQuiz = () => {
-    const json = generateFullQuizJson(pages, getQuestionsForPage, { globalTimeLimit, pageTimeLimit });
+    const json = generateFullQuizJson(pages, getQuestionsForPage, {
+      name: quizName,
+      description: quizDescription,
+      timeLimits: { globalTimeLimit, pageTimeLimit }
+    });
     const fileName = 'full_quiz.json';
     
     const blob = new Blob([json], { type: 'application/json' });
@@ -358,13 +367,21 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
   // Export quiz as ZIP archive
   const handleExportQuizAsZip = async () => {
     try {
-      const content = await exportQuizAsZip(pages, getQuestionsForPage, { globalTimeLimit, pageTimeLimit });
+      const result = await exportQuizAsZipHandler({
+        pages,
+        getQuestionsForPage,
+        quizMetadata: {
+          name: quizName,
+          description: quizDescription,
+          timeLimits: { globalTimeLimit, pageTimeLimit }
+        }
+      });
       
       // Create download link
-      const url = URL.createObjectURL(content);
+      const url = URL.createObjectURL(result.content);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'quiz_export.zip';
+      a.download = result.fileName;
       document.body.appendChild(a);
       a.click();
       
@@ -373,7 +390,9 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Failed to generate zip file:', error);
-      alert(t('questionBuilder.alerts.exportError'));
+      toast.error(t('questionBuilder.alerts.exportError'), {
+        duration: 3000,
+      });
     }
   };
 
@@ -618,7 +637,14 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
     if (!file) return;
 
     try {
-      const { pages: newPages, questions: newQuestions, globalTimeLimit: newGlobalTimeLimit, pageTimeLimit: newPageTimeLimit } = await importQuizFromZip(file);
+      const { 
+        pages: newPages, 
+        questions: newQuestions, 
+        globalTimeLimit: newGlobalTimeLimit, 
+        pageTimeLimit: newPageTimeLimit,
+        name: newQuizName,
+        description: newQuizDescription
+      } = await importQuizFromZip(file);
       
       // Update state
       setQuestions(newQuestions);
@@ -626,14 +652,20 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
       setActivePage(newPages[0]?.id || 'page-1');
       setGlobalTimeLimit(newGlobalTimeLimit);
       setPageTimeLimit(newPageTimeLimit);
+      setQuizName(newQuizName);
+      setQuizDescription(newQuizDescription);
 
       // Reset file input
       event.target.value = '';
       
-      alert(t('questionBuilder.alerts.importSuccess'));
+      toast.success(t('questionBuilder.alerts.importSuccess'), {
+        duration: 3000,
+      });
     } catch (error) {
       console.error('Failed to import quiz:', error);
-      alert(t('questionBuilder.alerts.importError'));
+      toast.error(t('questionBuilder.alerts.importError'), {
+        duration: 3000,
+      });
     }
   };
 
@@ -724,7 +756,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
             strategy={horizontalListSortingStrategy}
           >
             <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
-              {pages.map((page, index) => (
+              {pages.map((page) => (
                 <SortableItem
                   key={page.id}
                   id={page.id}
@@ -757,7 +789,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
                       </div>
                     ) : (
                       <div className="flex items-center">
-                        <span className="mr-2">{page.title}</span>
+                        <span className="mr-2 whitespace-nowrap">{page.title}</span>
                         <div className="flex space-x-1">
                           <button
                             onClick={(e) => {
@@ -805,7 +837,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
               ))}
               <button
                 onClick={addPage}
-                className="flex items-center px-4 py-2 text-sm font-medium text-gray-600 border-b-2 border-transparent rounded-t-lg hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
+                className="flex items-center px-4 py-2 text-sm font-medium text-gray-600 border-b-2 border-transparent rounded-t-lg hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 whitespace-nowrap"
               >
                 <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -861,7 +893,11 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
               <div className="p-4 overflow-auto max-h-[calc(80vh-4rem)]">
                 <pre className="bg-gray-100 dark:bg-gray-900 p-4 rounded-lg text-sm overflow-auto max-h-[60vh]">
                   {jsonOutputPage === 'full' 
-                    ? generateFullQuizJson(pages, getQuestionsForPage) 
+                    ? generateFullQuizJson(pages, getQuestionsForPage, {
+                        name: quizName,
+                        description: quizDescription,
+                        timeLimits: { globalTimeLimit, pageTimeLimit }
+                      }) 
                     : generateCurrentPageJson()}
                 </pre>
               </div>

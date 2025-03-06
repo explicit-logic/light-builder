@@ -62,7 +62,8 @@
       "toggle": "Toggle time limit settings",
       "globalLimit": "Global Time Limit",
       "pageLimit": "Page Time Limit",
-      "minutesPlaceholder": "Enter minutes"
+      "minutesPlaceholder": "Enter minutes",
+      "min": "min"
     },
     "fillInTheBlank": {
       "instruction": "Question (use \"_____\" to mark the blank)",

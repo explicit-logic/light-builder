@@ -18,13 +18,21 @@ interface TimeLimitOptions {
   pageTimeLimit: number | null;
 }
 
+interface QuizMetadata {
+  name: string;
+  description: string;
+  timeLimits?: TimeLimitOptions;
+}
+
 // Function to get all pages with their questions as a complete quiz
 export const generateFullQuizJson = (
   pages: Page[], 
   getQuestionsForPage: (pageId: string) => Question[],
-  timeLimits?: TimeLimitOptions
+  metadata: QuizMetadata
 ) => {
   const quizData = {
+    name: metadata.name,
+    description: metadata.description,
     pages: pages.map(page => {
       const pageQuestions = getQuestionsForPage(page.id);
       
@@ -45,8 +53,8 @@ export const generateFullQuizJson = (
         })
       };
     }),
-    globalTimeLimit: timeLimits?.globalTimeLimit || null,
-    pageTimeLimit: timeLimits?.pageTimeLimit || null
+    globalTimeLimit: metadata.timeLimits?.globalTimeLimit || null,
+    pageTimeLimit: metadata.timeLimits?.pageTimeLimit || null
   };
   
   return JSON.stringify(quizData, null, 2);
@@ -88,7 +96,7 @@ export const generatePageJson = (
 export const exportQuizAsZip = async (
   pages: Page[],
   getQuestionsForPage: (pageId: string) => Question[],
-  timeLimits?: TimeLimitOptions
+  metadata: QuizMetadata
 ): Promise<Blob> => {
   const zip = new JSZip();
   
@@ -145,9 +153,11 @@ export const exportQuizAsZip = async (
 
   // Add a manifest file with quiz structure
   const manifest = {
+    name: metadata.name,
+    description: metadata.description,
     totalPages: pages.length,
-    globalTimeLimit: timeLimits?.globalTimeLimit || null,
-    pageTimeLimit: timeLimits?.pageTimeLimit || null,
+    globalTimeLimit: metadata.timeLimits?.globalTimeLimit || null,
+    pageTimeLimit: metadata.timeLimits?.pageTimeLimit || null,
     pageOrder: pages.map(page => ({
       id: page.id,
       title: page.title,

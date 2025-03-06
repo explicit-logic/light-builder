@@ -75,6 +75,18 @@
       "optionPlaceholder": "Варіант {{number}}",
       "removeOption": "Видалити варіант",
       "dragHandle": "Перетягнути варіант"
+    },
+    "timer": {
+      "toggle": "Перемкнути налаштування обмеження часу",
+      "globalLimit": "Загальне обмеження часу",
+      "pageLimit": "Обмеження часу на сторінку",
+      "minutesPlaceholder": "Введіть хвилини",
+      "min": "хв"
+    },
+    "description": {
+      "toggle": "Перемкнути опис тесту",
+      "label": "Опис тесту",
+      "placeholder": "Введіть опис для вашого тесту..."
     }
   }
 } 

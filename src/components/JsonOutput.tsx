@@ -1,4 +1,5 @@
 import React from 'react';
+import toast from 'react-hot-toast';
 
 interface JsonOutputProps {
   jsonOutput: string;
@@ -6,8 +7,19 @@ interface JsonOutputProps {
 
 function JsonOutput({ jsonOutput }: JsonOutputProps) {
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(jsonOutput);
-    alert('JSON copied to clipboard!');
+    navigator.clipboard.writeText(jsonOutput)
+      .then(() => {
+        toast.success('JSON copied to clipboard!', {
+          duration: 2000,
+          position: 'bottom-center',
+        });
+      })
+      .catch(() => {
+        toast.error('Failed to copy JSON to clipboard', {
+          duration: 2000,
+          position: 'bottom-center',
+        });
+      });
   };
 
   return (

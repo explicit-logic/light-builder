@@ -7,6 +7,8 @@ export const importQuizFromZip = async (file: File): Promise<{
   questions: Record<string, Question>;
   globalTimeLimit: number | null;
   pageTimeLimit: number | null;
+  name: string;
+  description: string;
 }> => {
   const zip = await JSZip.loadAsync(file);
   const quizFolder = zip.folder("quiz");
@@ -68,6 +70,8 @@ export const importQuizFromZip = async (file: File): Promise<{
     pages: newPages, 
     questions: newQuestions,
     globalTimeLimit: manifest.globalTimeLimit || null,
-    pageTimeLimit: manifest.pageTimeLimit || null
+    pageTimeLimit: manifest.pageTimeLimit || null,
+    name: manifest.name || 'My Quiz',
+    description: manifest.description || ''
   };
 }; 
