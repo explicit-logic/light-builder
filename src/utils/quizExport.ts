@@ -124,7 +124,7 @@ export const exportQuizAsZip = async (
       if (cleanQuestion.image && cleanQuestion.image.startsWith('blob:')) {
         // Generate a filename for the image
         const imageExtension = 'png'; // Default extension, you might want to detect actual type
-        const imageFileName = `question_${question.id}_image.${imageExtension}`;
+        const imageFileName = `${question.id}.${imageExtension}`;
         
         // Fetch and store the image
         const imageBuffer = await fetchImageAsBuffer(cleanQuestion.image);
