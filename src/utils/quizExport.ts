@@ -156,6 +156,7 @@ export const exportQuizAsZip = async (
     name: metadata.name,
     description: metadata.description,
     totalPages: pages.length,
+    totalQuestions: pages.reduce((count, page) => count + getQuestionsForPage(page.id).length, 0),
     globalTimeLimit: metadata.timeLimits?.globalTimeLimit || null,
     pageTimeLimit: metadata.timeLimits?.pageTimeLimit || null,
     pageOrder: pages.map(page => ({
