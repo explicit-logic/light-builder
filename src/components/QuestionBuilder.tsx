@@ -253,7 +253,7 @@ const DragDropProvider: React.FC<{
 
 function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
   const { t } = useTranslation();
-  const [questionType, setQuestionType] = useState<Question['type']>('multipleChoice');
+  const [questionType, setQuestionType] = useState<Question['type']>('multiple-choice');
   const [showImageUpload, setShowImageUpload] = useState<Record<string, boolean>>({});
   const [showJsonOutput, setShowJsonOutput] = useState<boolean>(false);
   const [jsonOutputPage, setJsonOutputPage] = useState<string | null>(null);
@@ -463,11 +463,11 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
       id: `question-${Date.now()}`,
       type: questionType,
       text: t('questionBuilder.questionNumber', { number: activePageQuestionIds.length + 1 }),
-      options: questionType === 'fillInTheBlank' ? [] : [
+      options: questionType === 'fill-in-the-blank' ? [] : [
         { id: `option-${Date.now()}-1`, text: '', isCorrect: false },
         { id: `option-${Date.now()}-2`, text: '', isCorrect: false },
       ],
-      answer: questionType === 'fillInTheBlank' ? '' : undefined,
+      answer: questionType === 'fill-in-the-blank' ? '' : undefined,
       image: null,
     };
     
@@ -620,11 +620,11 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
     };
 
     switch (question.type) {
-      case 'multipleChoice':
+      case 'multiple-choice':
         return <MultipleChoice question={question} updateQuestion={updateThisQuestion} />;
-      case 'multipleResponse':
+      case 'multiple-response':
         return <MultipleResponse question={question} updateQuestion={updateThisQuestion} />;
-      case 'fillInTheBlank':
+      case 'fill-in-the-blank':
         return <FillInTheBlank question={question} updateQuestion={updateThisQuestion} />;
       default:
         return null;
@@ -735,9 +735,9 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
                 onChange={(e) => setQuestionType(e.target.value as Question['type'])}
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
               >
-                <option value="multipleChoice">{t('questionBuilder.types.multipleChoice')}</option>
-                <option value="multipleResponse">{t('questionBuilder.types.multipleResponse')}</option>
-                <option value="fillInTheBlank">{t('questionBuilder.types.fillInTheBlank')}</option>
+                <option value="multiple-choice">{t('questionBuilder.types.multipleChoice')}</option>
+                <option value="multiple-response">{t('questionBuilder.types.multipleResponse')}</option>
+                <option value="fill-in-the-blank">{t('questionBuilder.types.fillInTheBlank')}</option>
               </select>
             </div>
             <button

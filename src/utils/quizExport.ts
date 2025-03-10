@@ -107,7 +107,7 @@ export const exportQuizAsZip = async (
   // Process each page
   for (const page of pages) {
     // Create a folder for this page
-    const pageFolder = quizFolder.folder(`page_${page.id}`);
+    const pageFolder = quizFolder.folder(page.id);
     if (!pageFolder) continue;
 
     // Get the questions for this page
@@ -162,7 +162,7 @@ export const exportQuizAsZip = async (
     pageOrder: pages.map(page => ({
       id: page.id,
       title: page.title,
-      configFile: `page_${page.id}/page_config.json`
+      configFile: `${page.id}/page_config.json`
     }))
   };
   quizFolder.file("manifest.json", JSON.stringify(manifest, null, 2));

@@ -1,4 +1,4 @@
-export type QuestionType = 'multipleChoice' | 'multipleResponse' | 'fillInTheBlank';
+export type QuestionType = 'multiple-choice' | 'multiple-response' | 'fill-in-the-blank';
 
 export interface Option {
   id: string;

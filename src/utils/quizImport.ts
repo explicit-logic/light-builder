@@ -44,7 +44,7 @@ export const importQuizFromZip = async (file: File): Promise<{
       
       // If question has an image reference, load it
       if (question.image && question.image.startsWith('assets/')) {
-        const imagePath = `page_${pageConfig.id}/${question.image}`;
+        const imagePath = `${pageConfig.id}/${question.image}`;
         const imageFile = await quizFolder.file(imagePath)?.async("blob");
         
         if (imageFile) {
