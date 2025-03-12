@@ -23,23 +23,25 @@ import MultipleChoice from './QuestionTypes/MultipleChoice';
 import MultipleResponse from './QuestionTypes/MultipleResponse';
 import FillInTheBlank from './QuestionTypes/FillInTheBlank';
 import QuizTitle from './QuizTitle';
-import { Question, Page } from '../types';
+import { Question, PageOrderItem } from '../types';
 import { generateFullQuizJson, generatePageJson } from '../utils/quizExport';
 import { importQuizFromZip } from '../utils/quizImport';
 import { handleExportQuizAsZip as exportQuizAsZipHandler } from '../utils/exportHandlers';
+import { cachePageData, getCachedPageData, deleteCachedPage, clearAllCache } from '../utils/cacheUtils';
+import useManifestStorage from '../hooks/useManifestStorage';
 
 interface DescriptionButtonProps {
   showDescription: boolean;
   setShowDescription: (show: boolean) => void;
-  quizDescription: string;
-  setQuizDescription: (description: string) => void;
+  description: string;
+  setDescription: (description: string) => void;
 }
 
 const DescriptionButton: React.FC<DescriptionButtonProps> = ({
   showDescription,
   setShowDescription,
-  quizDescription,
-  setQuizDescription
+  description,
+  setDescription
 }) => {
   const { t } = useTranslation();
   const descriptionRef = useRef<HTMLDivElement>(null);
@@ -60,7 +62,7 @@ const DescriptionButton: React.FC<DescriptionButtonProps> = ({
     };
   }, [showDescription, setShowDescription]);
 
-  const hasDescription = quizDescription.trim().length > 0;
+  const hasDescription = description.trim().length > 0;
 
   return (
     <div className="relative" ref={descriptionRef} >
@@ -86,8 +88,8 @@ const DescriptionButton: React.FC<DescriptionButtonProps> = ({
               {t('questionBuilder.description.label')}
             </label>
             <textarea
-              value={quizDescription}
-              onChange={(e) => setQuizDescription(e.target.value)}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
               className="block w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md dark:text-white dark:bg-gray-700 min-h-[100px] resize-y"
               placeholder={t('questionBuilder.description.placeholder')}
             />
@@ -208,10 +210,7 @@ const TimerButton: React.FC<TimerButtonProps> = ({
   );
 };
 
-interface QuestionBuilderProps {
-  questions: Record<string, Question>;
-  setQuestions: (questions: Record<string, Question>) => void;
-}
+interface QuestionBuilderProps {}
 
 const DragDropProvider: React.FC<{ 
   children: React.ReactNode,
@@ -251,52 +250,273 @@ const DragDropProvider: React.FC<{
   );
 };
 
-function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
+function QuestionBuilder({}: QuestionBuilderProps) {
   const { t } = useTranslation();
   const [questionType, setQuestionType] = useState<Question['type']>('multiple-choice');
   const [showImageUpload, setShowImageUpload] = useState<Record<string, boolean>>({});
   const [showJsonOutput, setShowJsonOutput] = useState<boolean>(false);
   const [jsonOutputPage, setJsonOutputPage] = useState<string | null>(null);
+  const [jsonContent, setJsonContent] = useState<string>('');
   
-  // State for answers
-  const [answers, setAnswers] = useState<Record<string, string[]>>({});
+  // State for active page's questions and answers
+  const [activePageQuestions, setActivePageQuestions] = useState<Question[]>([]);
+  const [activePageAnswers, setActivePageAnswers] = useState<Record<string, string[]>>({});
   
-  // State for pages and active page
-  const [pages, setPages] = useState<Page[]>([
-    { id: 'page-1', title: t('questionBuilder.page.title', { number: 1 }), questions: [] }
+  // State for pages and active page using manifest storage
+  const [pages, setPages] = useManifestStorage('pageOrder', [
+    { id: 'page-1', title: t('questionBuilder.page.title', { number: 1 }), configFile: '' }
   ]);
-  const [activePage, setActivePage] = useState<string>('page-1');
+  const [activePage, setActivePage] = useManifestStorage('activePage', 'page-1');
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
   const [editingPageTitle, setEditingPageTitle] = useState<string>('');
   const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false);
-  const [quizName, setQuizName] = useState<string>(t('questionBuilder.quizName'));
-  const [quizDescription, setQuizDescription] = useState<string>('');
+  const [name, setName] = useManifestStorage('name', t('questionBuilder.quizName'));
+  const [description, setDescription] = useManifestStorage('description', '');
   const [showDescription, setShowDescription] = useState<boolean>(false);
   const [showTimer, setShowTimer] = useState<boolean>(false);
-  const [pageTimeLimit, setPageTimeLimit] = useState<number | null>(null);
-  const [globalTimeLimit, setGlobalTimeLimit] = useState<number | null>(null);
+  const [pageTimeLimit, setPageTimeLimit] = useManifestStorage('pageTimeLimit', null);
+  const [globalTimeLimit, setGlobalTimeLimit] = useManifestStorage('globalTimeLimit', null);
 
-  // Get questions for the active page
-  const activePageQuestionIds = pages.find(p => p.id === activePage)?.questions ?? [];
-  const activePageQuestions = activePageQuestionIds.map(qId => questions[qId]) ?? [];
+  // Effect to restore state from cache on mount
+  useEffect(() => {
+    const restoreState = async () => {
+      const cachedPageData = await getCachedPageData(activePage);
+      if (cachedPageData) {
+        setActivePageQuestions(cachedPageData.questions);
+        setActivePageAnswers(cachedPageData.answers);
+      }
+    };
+
+    restoreState();
+  }, [activePage]);
+
+  // Handle page switching and caching
+  const handlePageSwitch = async (newPageId: string) => {
+    // Cache current page data before switching
+    if (activePage && activePageQuestions.length > 0) {
+      await cachePageData(activePage, {
+        questions: activePageQuestions,
+        answers: activePageAnswers
+      });
+    }
+
+    // Load new page data from cache
+    const cachedData = await getCachedPageData(newPageId);
+    if (cachedData) {
+      setActivePageQuestions(cachedData.questions);
+      setActivePageAnswers(cachedData.answers);
+    } else {
+      setActivePageQuestions([]);
+      setActivePageAnswers({});
+    }
+
+    await setActivePage(newPageId);
+  };
+
+  // Modified page tab click handler
+  const handlePageTabClick = (pageId: string) => {
+    if (pageId !== activePage) {
+      handlePageSwitch(pageId);
+    }
+  };
+
+  // Add a new page
+  const addPage = async () => {
+    const newPageId = `page-${Date.now()}`;
+    const newPage: PageOrderItem = {
+      id: newPageId,
+      title: t('questionBuilder.page.title', { number: pages.length + 1 }),
+      configFile: '',
+    };
+    
+    await setPages([...pages, newPage]);
+    handlePageSwitch(newPageId);
+  };
+
+  // Modified updateQuestion to handle active page questions
+  const updateQuestion = (id: string, updatedQuestion: Partial<Question>) => {
+    const currentIndex = activePageQuestions.findIndex((question) => question.id === id);
+    if (currentIndex < 0) return;
+    const newQuestions = [...activePageQuestions];
+    const currentQuestion = newQuestions[currentIndex];
+    const newQuestion = { ...currentQuestion, ...updatedQuestion };
+    newQuestions[currentIndex] = newQuestion;
+    setActivePageQuestions(newQuestions);
+
+    // Update answers if needed
+    if (!activePageAnswers[id]) {
+      setActivePageAnswers(prev => ({
+        ...prev,
+        [id]: []
+      }));
+    }
+  };
+
+  // Modified addQuestion to handle active page questions
+  const addQuestion = async () => {
+    const newQuestion: Question = {
+      id: `question-${Date.now()}`,
+      type: questionType,
+      text: t('questionBuilder.questionNumber', { number: Object.keys(activePageQuestions).length + 1 }),
+      options: questionType === 'fill-in-the-blank' ? [] : [
+        { id: `option-${Date.now()}-1`, text: '' },
+        { id: `option-${Date.now()}-2`, text: '' },
+      ],
+      image: null,
+    };
+    
+    // Add to active page questions
+    setActivePageQuestions(prev => ([...prev, newQuestion]));
+    
+    // Initialize empty answers
+    setActivePageAnswers(prev => ({
+      ...prev,
+      [newQuestion.id]: []
+    }));
+    
+    // Update page question list
+    const updatedPages = pages.map(page => 
+      page.id === activePage 
+        ? { ...page } 
+        : page
+    );
+    await setPages(updatedPages);
+  };
+
+  // Modified deleteQuestion to handle active page questions
+  const deleteQuestion = async (id: string) => {
+    // Remove from active page questions and answers
+    const remainingQuestions = activePageQuestions.filter((question) => question.id !== id);
+    const { [id]: removedAnswers, ...remainingAnswers } = activePageAnswers;
+
+    setActivePageQuestions(remainingQuestions);
+    setActivePageAnswers(remainingAnswers);
+    
+    // Remove from pages
+    const updatedPages = pages.map(page => ({
+      ...page,
+      configFile: '',
+    }));
+    await setPages(updatedPages);
+  };
+
+  // Modified handleAnswerChange to handle active page answers
+  const handleAnswerChange = (questionId: string, optionId: string) => {
+    const currentAnswers = activePageAnswers[questionId] || [];
+    const question = activePageQuestions.find((q) => q.id === questionId);
+    
+    if (!question) return;
+
+    let newAnswers: string[];
+
+    if (question.type === 'multiple-choice') {
+      newAnswers = [optionId];
+    } else if (question.type === 'multiple-response') {
+      newAnswers = currentAnswers.includes(optionId)
+        ? currentAnswers.filter(id => id !== optionId)
+        : [...currentAnswers, optionId];
+    } else if (question.type === 'fill-in-the-blank') {
+      newAnswers = [optionId];
+    } else {
+      return;
+    }
+
+    setActivePageAnswers(prev => ({
+      ...prev,
+      [questionId]: newAnswers
+    }));
+  };
+
+  // Modified deletePage to handle cache
+  const deletePage = async (pageId: string) => {
+    // Delete page data from cache
+    await deleteCachedPage(pageId);
+    
+    // Update pages state
+    const updatedPages = pages.filter(p => p.id !== pageId);
+    
+    if (pageId === activePage && updatedPages.length > 0) {
+      await handlePageSwitch(updatedPages[0].id);
+    }
+    
+    if (updatedPages.length === 0) {
+      const newPageId = `page-${Date.now()}`;
+      await setPages([{ id: newPageId, title: t('questionBuilder.page.title', { number: 1 }), configFile: '' }]);
+      await setActivePage(newPageId);
+    } else {
+      await setPages(updatedPages);
+    }
+  };
+
+  // Modified handleImportQuiz to handle cache
+  const handleImportQuiz = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const { 
+        pages: newPages, 
+        questions: newQuestions, 
+        globalTimeLimit: newGlobalTimeLimit, 
+        pageTimeLimit: newPageTimeLimit,
+        name: newQuizName,
+        description: newQuizDescription,
+        answers: newAnswers
+      } = await importQuizFromZip(file);
+      
+      // Clear existing cache
+      await clearAllCache();
+      
+      // Cache data for each page except the first one
+      for (let i = 1; i < newPages.length; i++) {
+        const pageId = newPages[i].id;
+      }
+      
+      // Set first page as active and load its data
+      const firstPageId = newPages[0].id;
+
+      
+      setPages(newPages);
+      setActivePage(firstPageId);
+      // setActivePageQuestions([]);
+      // setActivePageAnswers([]);
+      setGlobalTimeLimit(newGlobalTimeLimit);
+      setPageTimeLimit(newPageTimeLimit);
+      setName(newQuizName);
+      setDescription(newQuizDescription);
+
+      event.target.value = '';
+      
+      toast.success(t('questionBuilder.alerts.importSuccess'), {
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Failed to import quiz:', error);
+      toast.error(t('questionBuilder.alerts.importError'), {
+        duration: 3000,
+      });
+    }
+  };
 
   // Get questions for a specific page
-  const getQuestionsForPage = (pageId: string) => {
-    const page = pages.find(p => p.id === pageId);
-    if (!page) return [];
+  const getQuestionsForPage = async (pageId: string) => {
+    if (pageId === activePage) {
+      return activePageQuestions;
+    }
     
-    return Object.values(questions).filter(q => page.questions.includes(q.id));
+    const cachedData = await getCachedPageData(pageId);
+    return cachedData ? cachedData.questions : [];
   };
 
   // Generate JSON for the current page
-  const generateCurrentPageJson = () => {
+  const generateCurrentPageJson = async () => {
     if (!jsonOutputPage) return '{}';
     const currentPage = pages.find(p => p.id === jsonOutputPage);
-    return generatePageJson(jsonOutputPage, currentPage, getQuestionsForPage, pageTimeLimit, answers);
+    return await generatePageJson(jsonOutputPage, currentPage, getQuestionsForPage, pageTimeLimit, activePageAnswers);
   };
 
   // Toggle JSON output display
-  const toggleJsonOutput = (pageId: string | null = null) => {
+  const toggleJsonOutput = async (pageId: string | null = null) => {
     if (pageId) {
       setJsonOutputPage(pageId);
       setShowJsonOutput(true);
@@ -306,10 +526,10 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
   };
 
   // Copy JSON to clipboard
-  const copyJsonToClipboard = () => {
+  const copyJsonToClipboard = async () => {
     if (!jsonOutputPage) return;
     
-    const json = generateCurrentPageJson();
+    const json = await generateCurrentPageJson();
     navigator.clipboard.writeText(json)
       .then(() => {
         toast.success(t('questionBuilder.json.copied'), {
@@ -323,10 +543,10 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
   };
 
   // Export JSON as file
-  const exportJsonAsFile = () => {
+  const exportJsonAsFile = async () => {
     if (!jsonOutputPage) return;
     
-    const json = generateCurrentPageJson();
+    const json = await generateCurrentPageJson();
     const page = pages.find(p => p.id === jsonOutputPage);
     const fileName = page ? `${page.title.replace(/\s+/g, '_')}.json` : 'page.json';
     
@@ -345,12 +565,12 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
   };
 
   // Export full quiz as JSON file
-  const exportFullQuiz = () => {
-    const json = generateFullQuizJson(pages, getQuestionsForPage, {
-      name: quizName,
-      description: quizDescription,
+  const exportFullQuiz = async () => {
+    const json = await generateFullQuizJson(pages, getQuestionsForPage, {
+      name,
+      description,
       timeLimits: { globalTimeLimit, pageTimeLimit }
-    }, answers);
+    }, activePageAnswers);
     const fileName = 'full_quiz.json';
     
     const blob = new Blob([json], { type: 'application/json' });
@@ -370,16 +590,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
   // Export quiz as ZIP archive
   const handleExportQuizAsZip = async () => {
     try {
-      const result = await exportQuizAsZipHandler({
-        pages,
-        getQuestionsForPage,
-        answers,
-        quizMetadata: {
-          name: quizName,
-          description: quizDescription,
-          timeLimits: { globalTimeLimit, pageTimeLimit }
-        }
-      });
+      const result = await exportQuizAsZipHandler();
       
       // Create download link
       const url = URL.createObjectURL(result.content);
@@ -400,49 +611,6 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
     }
   };
 
-  // Add a new page
-  const addPage = () => {
-    const newPageId = `page-${Date.now()}`;
-    const newPage: Page = {
-      id: newPageId,
-      title: t('questionBuilder.page.title', { number: pages.length + 1 }),
-      questions: []
-    };
-    setPages([...pages, newPage]);
-    setActivePage(newPageId);
-  };
-
-  // Delete a page and its questions
-  const deletePage = (pageId: string) => {
-    // Get the questions to delete
-    const pageToDelete = pages.find(p => p.id === pageId);
-    if (!pageToDelete) return;
-
-    // Delete the questions
-    const updatedQuestions = { ...questions };
-    pageToDelete.questions.forEach(qId => {
-      delete updatedQuestions[qId];
-    });
-    setQuestions(updatedQuestions);
-
-    // Delete the page
-    const updatedPages = pages.filter(p => p.id !== pageId);
-    
-    // If we're deleting the active page, set a new active page
-    if (pageId === activePage && updatedPages.length > 0) {
-      setActivePage(updatedPages[0].id);
-    }
-    
-    // If no pages left, create a new one
-    if (updatedPages.length === 0) {
-      const newPageId = `page-${Date.now()}`;
-      setPages([{ id: newPageId, title: t('questionBuilder.page.title', { number: 1 }), questions: [] }]);
-      setActivePage(newPageId);
-    } else {
-      setPages(updatedPages);
-    }
-  };
-
   // Start editing a page title
   const startEditingPage = (pageId: string) => {
     const page = pages.find(p => p.id === pageId);
@@ -452,85 +620,15 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
     }
   };
 
-  // Save the edited page title
-  const savePageTitle = () => {
+  // Modified savePageTitle to handle async
+  const savePageTitle = async () => {
     if (editingPageId) {
-      setPages(pages.map(p => 
+      const updatedPages = pages.map(p => 
         p.id === editingPageId ? { ...p, title: editingPageTitle } : p
-      ));
+      );
+      await setPages(updatedPages);
       setEditingPageId(null);
     }
-  };
-
-  // Update answers when a question changes
-  const updateAnswers = (questionId: string, question: Question) => {
-    const newAnswers = { ...answers };
-    
-    // Initialize empty answers array if it doesn't exist
-    if (!newAnswers[questionId]) {
-      newAnswers[questionId] = [];
-    }
-    
-    setAnswers(newAnswers);
-  };
-
-  // Modified updateQuestion to handle answers separately
-  const updateQuestion = (id: string, updatedQuestion: Partial<Question>) => {
-    const currentQuestion = questions[id];
-    if (!currentQuestion) return;
-    
-    const newQuestion = { ...currentQuestion, ...updatedQuestion };
-    setQuestions({
-      ...questions,
-      [id]: newQuestion
-    });
-
-    // Update answers if needed
-    updateAnswers(id, newQuestion);
-  };
-
-  const addQuestion = () => {
-    const newQuestion: Question = {
-      id: `question-${Date.now()}`,
-      type: questionType,
-      text: t('questionBuilder.questionNumber', { number: activePageQuestionIds.length + 1 }),
-      options: questionType === 'fill-in-the-blank' ? [] : [
-        { id: `option-${Date.now()}-1`, text: '' },
-        { id: `option-${Date.now()}-2`, text: '' },
-      ],
-      image: null,
-    };
-    
-    // Add the question to the questions object
-    setQuestions({ ...questions, [newQuestion.id]: newQuestion });
-    
-    // Initialize empty answers for the new question
-    setAnswers(prev => ({ ...prev, [newQuestion.id]: [] }));
-    
-    // Add the question ID to the active page
-    setPages(pages.map(page => 
-      page.id === activePage 
-        ? { ...page, questions: [...page.questions, newQuestion.id] } 
-        : page
-    ));
-  };
-
-  const deleteQuestion = (id: string) => {
-    // Remove the question from the questions object
-    const updatedQuestions = { ...questions };
-    delete updatedQuestions[id];
-    setQuestions(updatedQuestions);
-    
-    // Remove the question's answers
-    const updatedAnswers = { ...answers };
-    delete updatedAnswers[id];
-    setAnswers(updatedAnswers);
-    
-    // Remove the question ID from any page that contains it
-    setPages(pages.map(page => ({
-      ...page,
-      questions: page.questions.filter(qId => qId !== id)
-    })));
   };
 
   const onDragEnd = (event: DragEndEvent) => {
@@ -554,36 +652,10 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
 
     // Handle question reordering
     if (active.data.current?.type === 'question') {
-      const activePage = pages.find(p => p.questions.includes(activeId));
-      const overPage = pages.find(p => p.questions.includes(overId));
-      
-      if (activePage && overPage) {
-        if (activePage.id === overPage.id) {
-          // Moving within the same page
-          const oldIndex = activePage.questions.indexOf(activeId);
-          const newIndex = activePage.questions.indexOf(overId);
-          
-          setPages(pages.map(p => 
-            p.id === activePage.id 
-              ? { ...p, questions: arrayMove(p.questions, oldIndex, newIndex) }
-              : p
-          ));
-        } else {
-          // Moving between pages
-          setPages(pages.map(p => {
-            if (p.id === activePage.id) {
-              return { ...p, questions: p.questions.filter(id => id !== activeId) };
-            }
-            if (p.id === overPage.id) {
-              const newIndex = p.questions.indexOf(overId);
-              const newQuestions = [...p.questions];
-              newQuestions.splice(newIndex, 0, activeId);
-              return { ...p, questions: newQuestions };
-            }
-            return p;
-          }));
-        }
-      }
+      const oldIndex = activePageQuestions.findIndex(p => p.id === activeId);
+      const newIndex = activePageQuestions.findIndex(p => p.id === overId);
+
+      setActivePageQuestions(arrayMove(activePageQuestions, oldIndex, newIndex));
       return;
     }
 
@@ -593,18 +665,15 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
       const destQuestionId = over.data.current?.questionId;
       
       if (sourceQuestionId === destQuestionId) {
-        const question = questions[sourceQuestionId];
+        const question = activePageQuestions.find(q => q.id === sourceQuestionId);
         if (question && question.options) {
           const oldIndex = question.options.findIndex(opt => opt.id === activeId);
           const newIndex = question.options.findIndex(opt => opt.id === overId);
           
-          setQuestions({
-            ...questions,
-            [sourceQuestionId]: {
-              ...question,
-              options: arrayMove(question.options, oldIndex, newIndex)
-            }
-          });
+          if (oldIndex !== -1 && newIndex !== -1) {
+            updateQuestion(question.id, { options: arrayMove(question.options || [], oldIndex, newIndex) });
+
+          }
         }
       }
     }
@@ -623,8 +692,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
 
   const removeImage = (questionId: string) => {
     // Find the question
-    const question = questions[questionId];
-    
+    const question = activePageQuestions.find(q => q.id === questionId);
     // If the question has an image URL created with URL.createObjectURL, revoke it
     if (question?.image && question.image.startsWith('blob:')) {
       URL.revokeObjectURL(question.image);
@@ -647,95 +715,30 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
       updateQuestion(question.id, updatedQuestion);
     };
 
-    const handleAnswerChange = (optionId: string) => {
-      const currentAnswers = answers[question.id] || [];
-      let newAnswers: string[];
-
-      if (question.type === 'multiple-choice') {
-        // For multiple choice, only one answer can be selected
-        newAnswers = [optionId];
-      } else if (question.type === 'multiple-response') {
-        // For multiple response, toggle the selected option
-        newAnswers = currentAnswers.includes(optionId)
-          ? currentAnswers.filter(id => id !== optionId)
-          : [...currentAnswers, optionId];
-      } else if (question.type === 'fill-in-the-blank') {
-        // For fill in the blank, just use the input value
-        newAnswers = [optionId];
-      } else {
-        return;
-      }
-
-      setAnswers(prev => ({
-        ...prev,
-        [question.id]: newAnswers
-      }));
-    };
-
     switch (question.type) {
       case 'multiple-choice':
         return <MultipleChoice 
           question={question} 
           updateQuestion={updateThisQuestion} 
-          answers={answers[question.id] || []}
-          onAnswerChange={handleAnswerChange}
+          answers={activePageAnswers[question.id] || []}
+          onAnswerChange={(optionId) => handleAnswerChange(question.id, optionId)}
         />;
       case 'multiple-response':
         return <MultipleResponse 
           question={question} 
           updateQuestion={updateThisQuestion} 
-          answers={answers[question.id] || []}
-          onAnswerChange={handleAnswerChange}
+          answers={activePageAnswers[question.id] || []}
+          onAnswerChange={(optionId) => handleAnswerChange(question.id, optionId)}
         />;
       case 'fill-in-the-blank':
         return <FillInTheBlank 
           question={question} 
           updateQuestion={updateThisQuestion} 
-          answers={answers[question.id] || []}
-          onAnswerChange={handleAnswerChange}
+          answers={activePageAnswers[question.id] || []}
+          onAnswerChange={(optionId) => handleAnswerChange(question.id, optionId)}
         />;
       default:
         return null;
-    }
-  };
-
-  // Modified handleImportQuiz to handle answers
-  const handleImportQuiz = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const { 
-        pages: newPages, 
-        questions: newQuestions, 
-        globalTimeLimit: newGlobalTimeLimit, 
-        pageTimeLimit: newPageTimeLimit,
-        name: newQuizName,
-        description: newQuizDescription,
-        answers: newAnswers
-      } = await importQuizFromZip(file);
-      
-      // Update state
-      setQuestions(newQuestions);
-      setAnswers(newAnswers);
-      setPages(newPages);
-      setActivePage(newPages[0]?.id || 'page-1');
-      setGlobalTimeLimit(newGlobalTimeLimit);
-      setPageTimeLimit(newPageTimeLimit);
-      setQuizName(newQuizName);
-      setQuizDescription(newQuizDescription);
-
-      // Reset file input
-      event.target.value = '';
-      
-      toast.success(t('questionBuilder.alerts.importSuccess'), {
-        duration: 3000,
-      });
-    } catch (error) {
-      console.error('Failed to import quiz:', error);
-      toast.error(t('questionBuilder.alerts.importError'), {
-        duration: 3000,
-      });
     }
   };
 
@@ -747,17 +750,17 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
             <div className="flex flex-col gap-2 flex-grow">
               <div className="flex items-center gap-4">
                 <QuizTitle
-                  quizName={quizName}
+                  name={name}
                   isEditingTitle={isEditingTitle}
-                  setQuizName={setQuizName}
+                  setName={setName}
                   setIsEditingTitle={setIsEditingTitle}
                 />
                 <div className="flex items-center space-x-3 flex-shrink-0">
                   <DescriptionButton
                     showDescription={showDescription}
                     setShowDescription={setShowDescription}
-                    quizDescription={quizDescription}
-                    setQuizDescription={setQuizDescription}
+                    description={description}
+                    setDescription={setDescription}
                   />
                   <TimerButton
                     showTimer={showTimer}
@@ -838,7 +841,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
                         ? 'text-blue-600 border-blue-600 dark:text-blue-500 dark:border-blue-500'
                         : 'text-gray-500 border-transparent hover:text-gray-600 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
                     }`}
-                    onClick={() => setActivePage(page.id)}
+                    onClick={() => handlePageTabClick(page.id)}
                   >
                     <DragHandle className="mr-2">
                       <svg className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -962,13 +965,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
               </div>
               <div className="p-4 overflow-auto max-h-[calc(80vh-4rem)]">
                 <pre className="bg-gray-100 dark:bg-gray-900 p-4 rounded-lg text-sm overflow-auto max-h-[60vh]">
-                  {jsonOutputPage === 'full' 
-                    ? generateFullQuizJson(pages, getQuestionsForPage, {
-                        name: quizName,
-                        description: quizDescription,
-                        timeLimits: { globalTimeLimit, pageTimeLimit }
-                      }, answers) 
-                    : generateCurrentPageJson()}
+                  {jsonContent}
                 </pre>
               </div>
               <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">

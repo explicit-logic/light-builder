@@ -18,8 +18,19 @@ export interface QuestionBuilderProps {
   setQuestions: (questions: Record<string, Question>) => void;
 }
 
-export interface Page {
+export interface PageOrderItem {
   id: string;
   title: string;
-  questions: string[]; // Array of question IDs
-} 
+  configFile: string;
+}
+
+export interface Manifest {
+  name: string;
+  description: string;
+  totalPages: number;
+  totalQuestions: number;
+  activePage: string;
+  globalTimeLimit: number | null;
+  pageTimeLimit: number | null;
+  pageOrder: PageOrderItem[];
+}

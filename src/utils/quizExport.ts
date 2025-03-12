@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import { Question, Page } from '@/types';
+import { Question, PageOrderItem } from '@/types';
 
 // Helper function to fetch and convert blob URLs to array buffers
 const fetchImageAsBuffer = async (blobUrl: string): Promise<ArrayBuffer | null> => {
@@ -24,54 +24,35 @@ interface QuizMetadata {
   timeLimits?: TimeLimitOptions;
 }
 
-// Helper function to prepare a question for export
-const prepareQuestionForExport = (question: Question, answers: Record<string, string[]>): Question => {
-  const { options, ...rest } = question;
-  return {
-    ...rest,
-    options: options?.map(({ id, text }) => ({ id, text }))
-  };
-};
-
-// Function to extract correct answers from questions
-const extractAnswers = (questions: Question[]): Record<string, string[]> => {
-  const answers: Record<string, string[]> = {};
-  
-  questions.forEach(question => {
-    if (!answers[question.id]) {
-      answers[question.id] = [];
-    }
-  });
-  
-  return answers;
-};
-
 // Generate JSON for a single page
-export const generatePageJson = (
+export const generatePageJson = async (
   pageId: string,
-  page: Page | undefined,
-  getQuestionsForPage: (pageId: string) => Question[],
+  page: PageOrderItem | undefined,
+  getQuestionsForPage: (pageId: string) => Promise<Question[]>,
   pageTimeLimit: number | null,
   answers: Record<string, string[]>
-): string => {
+): Promise<string> => {
   if (!page) return '{}';
 
-  const questions = getQuestionsForPage(pageId);
-  const exportedQuestions = questions.map(q => prepareQuestionForExport(q, answers));
-
-  return JSON.stringify({
+  const questions = await getQuestionsForPage(pageId);
+  
+  const pageData = {
     id: page.id,
     title: page.title,
-    questions: exportedQuestions,
-    answers,
-    timeLimit: pageTimeLimit
-  }, null, 2);
+    timeLimit: pageTimeLimit,
+    questions: questions.map(q => ({
+      ...q,
+      answers: answers[q.id] || []
+    }))
+  };
+
+  return JSON.stringify(pageData, null, 2);
 };
 
 // Generate JSON for the entire quiz
-export const generateFullQuizJson = (
-  pages: Page[],
-  getQuestionsForPage: (pageId: string) => Question[],
+export const generateFullQuizJson = async (
+  pages: PageOrderItem[],
+  getQuestionsForPage: (pageId: string) => Promise<Question[]>,
   metadata: {
     name: string;
     description: string;
@@ -81,33 +62,34 @@ export const generateFullQuizJson = (
     };
   },
   answers: Record<string, string[]>
-): string => {
-  const exportedPages = pages.map(page => {
-    const questions = getQuestionsForPage(page.id);
-    const exportedQuestions = questions.map(q => prepareQuestionForExport(q, answers));
-    return {
-      ...page,
-      questions: exportedQuestions,
-      answers: Object.fromEntries(
-        Object.entries(answers).filter(([qId]) => 
-          questions.some(q => q.id === qId)
-        )
-      )
-    };
-  });
+): Promise<string> => {
+  const pagesWithQuestions = await Promise.all(
+    pages.map(async (page) => {
+      const questions = await getQuestionsForPage(page.id);
+      return {
+        ...page,
+        questions: questions.map(q => ({
+          ...q,
+          answers: answers[q.id] || []
+        }))
+      };
+    })
+  );
 
-  return JSON.stringify({
+  const quizData = {
     name: metadata.name,
     description: metadata.description,
     globalTimeLimit: metadata.timeLimits.globalTimeLimit,
     pageTimeLimit: metadata.timeLimits.pageTimeLimit,
-    pages: exportedPages
-  }, null, 2);
+    pages: pagesWithQuestions
+  };
+
+  return JSON.stringify(quizData, null, 2);
 };
 
 // Export quiz as ZIP archive containing JSON files and images for each page
 export const exportQuizAsZip = async (
-  pages: Page[],
+  pages: PageOrderItem[],
   getQuestionsForPage: (pageId: string) => Question[],
   metadata: QuizMetadata,
   answers: Record<string, string[]>

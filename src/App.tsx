@@ -1,18 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import QuestionBuilder from './components/QuestionBuilder';
 import ThemeToggle from './components/ThemeToggle';
 import LanguageSelector from './components/LanguageSelector';
-import useLocalStorage from './hooks/useLocalStorage';
-import { Question } from './types';
 import { Toaster } from 'react-hot-toast';
 import './i18n/config';
 
 function App() {
   const { t } = useTranslation();
-  const [darkMode, setDarkMode] = useLocalStorage('darkMode', false);
-  const [questions, setQuestions] = useLocalStorage<Record<string, Question>>('questions', {});
-  const [jsonOutput, setJsonOutput] = useState('');
+  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
     if (darkMode) {
@@ -22,13 +18,7 @@ function App() {
     }
   }, [darkMode]);
 
-  useEffect(() => {
-    setJsonOutput(JSON.stringify(questions, null, 2));
-  }, [questions]);
-
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-  };
+  const toggleDarkMode = () => setDarkMode(!darkMode);
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-200">
@@ -44,7 +34,7 @@ function App() {
         
         <div className="flex justify-center">
           <div className="w-full">
-            <QuestionBuilder questions={questions} setQuestions={setQuestions} />
+            <QuestionBuilder />
           </div>
         </div>
       </div>

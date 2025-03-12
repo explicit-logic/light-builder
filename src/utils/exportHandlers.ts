@@ -1,5 +1,6 @@
-import { Page, Question } from '../types';
-import { exportQuizAsZip } from './quizExport';
+import JSZip from 'jszip';
+import { getManifest } from './manifestUtils';
+import { getCachedPageData } from './cacheUtils';
 
 // Transliteration map for Cyrillic characters
 const cyrillicToLatin: { [key: string]: string } = {
@@ -16,18 +17,9 @@ const cyrillicToLatin: { [key: string]: string } = {
   'Ъ': '', 'Ы': 'Y', 'Ь': '', 'Э': 'E', 'Ю': 'Yu', 'Я': 'Ya'
 };
 
-interface ExportQuizParams {
-  pages: Page[];
-  getQuestionsForPage: (pageId: string) => Question[];
-  answers: Record<string, string[]>;
-  quizMetadata: {
-    name: string;
-    description: string;
-    timeLimits: {
-      globalTimeLimit: number | null;
-      pageTimeLimit: number | null;
-    };
-  };
+interface ExportResult {
+  content: Blob;
+  fileName: string;
 }
 
 // Sanitize quiz name for filename
@@ -51,14 +43,34 @@ const sanitizeFileName = (name: string): string => {
   return sanitized || 'quiz';
 };
 
-export const handleExportQuizAsZip = async ({ pages, getQuestionsForPage, quizMetadata, answers }: ExportQuizParams): Promise<{ content: Blob; fileName: string }> => {
-  const content = await exportQuizAsZip(pages, getQuestionsForPage, {
-    name: quizMetadata.name,
-    description: quizMetadata.description,
-    timeLimits: quizMetadata.timeLimits
-  }, answers);
+export const handleExportQuizAsZip = async (): Promise<ExportResult> => {
+  const zip = new JSZip();
+  const manifest = await getManifest();
 
-  const fileName = `${sanitizeFileName(quizMetadata.name)}.zip`;
-  
-  return { content, fileName };
+  if (!manifest) {
+    throw new Error('No quiz data found to export');
+  }
+
+  // Add manifest.json
+  zip.file('manifest.json', JSON.stringify(manifest, null, 2));
+
+  // Add page files
+  for (const page of manifest.pageOrder) {
+    const pageData = await getCachedPageData(page.id);
+    if (pageData) {
+      zip.file(`pages/${page.id}.json`, JSON.stringify({
+        questions: Object.values(pageData.questions),
+        answers: pageData.answers
+      }, null, 2));
+    }
+  }
+
+  // Generate zip file
+  const content = await zip.generateAsync({ type: 'blob' });
+  const fileName = `${sanitizeFileName(manifest.name)}.zip`;
+
+  return {
+    content,
+    fileName
+  };
 }; 
