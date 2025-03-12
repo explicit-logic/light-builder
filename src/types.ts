@@ -3,7 +3,6 @@ export type QuestionType = 'multiple-choice' | 'multiple-response' | 'fill-in-th
 export interface Option {
   id: string;
   text: string;
-  isCorrect: boolean;
 }
 
 export interface Question {
@@ -11,7 +10,6 @@ export interface Question {
   type: QuestionType;
   text: string;
   options?: Option[];
-  answer?: string;
   image: string | null;
 }
 

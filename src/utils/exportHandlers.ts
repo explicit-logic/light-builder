@@ -19,6 +19,7 @@ const cyrillicToLatin: { [key: string]: string } = {
 interface ExportQuizParams {
   pages: Page[];
   getQuestionsForPage: (pageId: string) => Question[];
+  answers: Record<string, string[]>;
   quizMetadata: {
     name: string;
     description: string;
@@ -50,12 +51,12 @@ const sanitizeFileName = (name: string): string => {
   return sanitized || 'quiz';
 };
 
-export const handleExportQuizAsZip = async ({ pages, getQuestionsForPage, quizMetadata }: ExportQuizParams): Promise<{ content: Blob; fileName: string }> => {
+export const handleExportQuizAsZip = async ({ pages, getQuestionsForPage, quizMetadata, answers }: ExportQuizParams): Promise<{ content: Blob; fileName: string }> => {
   const content = await exportQuizAsZip(pages, getQuestionsForPage, {
     name: quizMetadata.name,
     description: quizMetadata.description,
     timeLimits: quizMetadata.timeLimits
-  });
+  }, answers);
 
   const fileName = `${sanitizeFileName(quizMetadata.name)}.zip`;
   

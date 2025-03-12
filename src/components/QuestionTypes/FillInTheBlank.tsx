@@ -5,9 +5,11 @@ import { Question } from '../../types';
 interface FillInTheBlankProps {
   question: Question;
   updateQuestion: (updatedQuestion: Partial<Question>) => void;
+  answers: string[];
+  onAnswerChange: (answer: string) => void;
 }
 
-function FillInTheBlank({ question, updateQuestion }: FillInTheBlankProps) {
+function FillInTheBlank({ question, updateQuestion, answers, onAnswerChange }: FillInTheBlankProps) {
   const { t } = useTranslation();
 
   const handleQuestionTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -15,7 +17,7 @@ function FillInTheBlank({ question, updateQuestion }: FillInTheBlankProps) {
   };
 
   const handleAnswerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    updateQuestion({ answer: e.target.value });
+    onAnswerChange(e.target.value);
   };
 
   return (
@@ -39,7 +41,7 @@ function FillInTheBlank({ question, updateQuestion }: FillInTheBlankProps) {
         </label>
         <input
           type="text"
-          value={question.answer || ''}
+          value={answers[0] || ''}
           onChange={handleAnswerChange}
           placeholder={t('questionBuilder.fillInTheBlank.answerPlaceholder')}
           className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-white"

@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import { Question, Page } from '../types';
+import { Question, Page } from '@/types';
 
 // Helper function to fetch and convert blob URLs to array buffers
 const fetchImageAsBuffer = async (blobUrl: string): Promise<ArrayBuffer | null> => {
@@ -24,79 +24,93 @@ interface QuizMetadata {
   timeLimits?: TimeLimitOptions;
 }
 
-// Function to get all pages with their questions as a complete quiz
-export const generateFullQuizJson = (
-  pages: Page[], 
-  getQuestionsForPage: (pageId: string) => Question[],
-  metadata: QuizMetadata
-) => {
-  const quizData = {
-    name: metadata.name,
-    description: metadata.description,
-    pages: pages.map(page => {
-      const pageQuestions = getQuestionsForPage(page.id);
-      
-      return {
-        id: page.id,
-        title: page.title,
-        questions: pageQuestions.map(q => {
-          // Create a clean version of the question without circular references
-          // and without the blob URLs for images (which won't work when exported)
-          const cleanQuestion = { ...q };
-          
-          // Replace blob URLs with a placeholder
-          if (cleanQuestion.image && cleanQuestion.image.startsWith('blob:')) {
-            cleanQuestion.image = '[Image data not included in JSON]';
-          }
-          
-          return cleanQuestion;
-        })
-      };
-    }),
-    globalTimeLimit: metadata.timeLimits?.globalTimeLimit || null,
-    pageTimeLimit: metadata.timeLimits?.pageTimeLimit || null
+// Helper function to prepare a question for export
+const prepareQuestionForExport = (question: Question, answers: Record<string, string[]>): Question => {
+  const { options, ...rest } = question;
+  return {
+    ...rest,
+    options: options?.map(({ id, text }) => ({ id, text }))
   };
-  
-  return JSON.stringify(quizData, null, 2);
 };
 
-// Function to generate JSON for a single page
+// Function to extract correct answers from questions
+const extractAnswers = (questions: Question[]): Record<string, string[]> => {
+  const answers: Record<string, string[]> = {};
+  
+  questions.forEach(question => {
+    if (!answers[question.id]) {
+      answers[question.id] = [];
+    }
+  });
+  
+  return answers;
+};
+
+// Generate JSON for a single page
 export const generatePageJson = (
-  pageId: string, 
-  page: Page | undefined, 
+  pageId: string,
+  page: Page | undefined,
   getQuestionsForPage: (pageId: string) => Question[],
-  timeLimit: number | null
-) => {
+  pageTimeLimit: number | null,
+  answers: Record<string, string[]>
+): string => {
   if (!page) return '{}';
-  
-  const pageQuestions = getQuestionsForPage(pageId);
-  
-  const pageData = {
+
+  const questions = getQuestionsForPage(pageId);
+  const exportedQuestions = questions.map(q => prepareQuestionForExport(q, answers));
+
+  return JSON.stringify({
     id: page.id,
     title: page.title,
-    timeLimit: timeLimit,
-    questions: pageQuestions.map(q => {
-      // Create a clean version of the question without circular references
-      // and without the blob URLs for images (which won't work when exported)
-      const cleanQuestion = { ...q };
-      
-      // Replace blob URLs with a placeholder
-      if (cleanQuestion.image && cleanQuestion.image.startsWith('blob:')) {
-        cleanQuestion.image = '[Image data not included in JSON]';
-      }
-      
-      return cleanQuestion;
-    })
-  };
-  
-  return JSON.stringify(pageData, null, 2);
+    questions: exportedQuestions,
+    answers,
+    timeLimit: pageTimeLimit
+  }, null, 2);
+};
+
+// Generate JSON for the entire quiz
+export const generateFullQuizJson = (
+  pages: Page[],
+  getQuestionsForPage: (pageId: string) => Question[],
+  metadata: {
+    name: string;
+    description: string;
+    timeLimits: {
+      globalTimeLimit: number | null;
+      pageTimeLimit: number | null;
+    };
+  },
+  answers: Record<string, string[]>
+): string => {
+  const exportedPages = pages.map(page => {
+    const questions = getQuestionsForPage(page.id);
+    const exportedQuestions = questions.map(q => prepareQuestionForExport(q, answers));
+    return {
+      ...page,
+      questions: exportedQuestions,
+      answers: Object.fromEntries(
+        Object.entries(answers).filter(([qId]) => 
+          questions.some(q => q.id === qId)
+        )
+      )
+    };
+  });
+
+  return JSON.stringify({
+    name: metadata.name,
+    description: metadata.description,
+    globalTimeLimit: metadata.timeLimits.globalTimeLimit,
+    pageTimeLimit: metadata.timeLimits.pageTimeLimit,
+    pages: exportedPages
+  }, null, 2);
 };
 
 // Export quiz as ZIP archive containing JSON files and images for each page
 export const exportQuizAsZip = async (
   pages: Page[],
   getQuestionsForPage: (pageId: string) => Question[],
-  metadata: QuizMetadata
+  metadata: QuizMetadata,
+  answers: Record<string, string[]>
 ): Promise<Blob> => {
   const zip = new JSZip();
   
@@ -119,7 +133,7 @@ export const exportQuizAsZip = async (
 
     // Process and store images, update question references
     const processedQuestions = await Promise.all(pageQuestions.map(async (question) => {
-      const cleanQuestion = { ...question };
+      const { options, ...cleanQuestion } = { ...question };
       
       if (cleanQuestion.image && cleanQuestion.image.startsWith('blob:')) {
         // Generate a filename for the image
@@ -137,7 +151,12 @@ export const exportQuizAsZip = async (
         }
       }
       
-      return cleanQuestion;
+      // Add back options without isCorrect if they exist
+      if (options) {
+        (cleanQuestion as Question).options = options.map(({ id, text }) => ({ id, text }));
+      }
+      
+      return cleanQuestion as Question;
     }));
 
     // Create the page JSON with processed questions
@@ -149,6 +168,19 @@ export const exportQuizAsZip = async (
     
     // Add the page config file
     pageFolder.file("page_config.json", JSON.stringify(pageData, null, 2));
+
+    // Get answers for this page's questions
+    const pageAnswers: Record<string, string[]> = {};
+    pageQuestions.forEach(question => {
+      if (answers[question.id]) {
+        pageAnswers[question.id] = answers[question.id];
+      }
+    });
+
+    // Add answers file if there are any answers
+    if (Object.keys(pageAnswers).length > 0) {
+      pageFolder.file("answers.json", JSON.stringify(pageAnswers, null, 2));
+    }
   }
 
   // Add a manifest file with quiz structure
@@ -162,7 +194,8 @@ export const exportQuizAsZip = async (
     pageOrder: pages.map(page => ({
       id: page.id,
       title: page.title,
-      configFile: `${page.id}/page_config.json`
+      configFile: `${page.id}/page_config.json`,
+      answersFile: `${page.id}/answers.json`
     }))
   };
   quizFolder.file("manifest.json", JSON.stringify(manifest, null, 2));

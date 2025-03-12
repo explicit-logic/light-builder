@@ -9,6 +9,7 @@ export const importQuizFromZip = async (file: File): Promise<{
   pageTimeLimit: number | null;
   name: string;
   description: string;
+  answers: Record<string, string[]>;
 }> => {
   const zip = await JSZip.loadAsync(file);
   const quizFolder = zip.folder("quiz");
@@ -25,6 +26,7 @@ export const importQuizFromZip = async (file: File): Promise<{
   const manifest = JSON.parse(manifestFile);
   const newPages: Page[] = [];
   const newQuestions: Record<string, Question> = {};
+  const answers: Record<string, string[]> = {};
 
   // Process each page
   for (const pageInfo of manifest.pageOrder) {
@@ -37,6 +39,20 @@ export const importQuizFromZip = async (file: File): Promise<{
     }
 
     const pageConfig = JSON.parse(pageConfigFile);
+
+    // Load answers for this page if available
+    if (pageInfo.answersFile) {
+      const answersFile = await quizFolder.file(pageInfo.answersFile)?.async("text");
+      if (answersFile) {
+        try {
+          const pageAnswers = JSON.parse(answersFile);
+          // Merge page answers into the global answers object
+          Object.assign(answers, pageAnswers);
+        } catch (error) {
+          console.error(`Failed to parse answers file: ${pageInfo.answersFile}`, error);
+        }
+      }
+    }
 
     // Process questions and their images
     await Promise.all(pageConfig.questions.map(async (question: Question) => {
@@ -66,12 +82,13 @@ export const importQuizFromZip = async (file: File): Promise<{
     });
   }
 
-  return { 
-    pages: newPages, 
+  return {
+    pages: newPages,
     questions: newQuestions,
     globalTimeLimit: manifest.globalTimeLimit || null,
     pageTimeLimit: manifest.pageTimeLimit || null,
     name: manifest.name || 'My Quiz',
-    description: manifest.description || ''
+    description: manifest.description || '',
+    answers
   };
 }; 

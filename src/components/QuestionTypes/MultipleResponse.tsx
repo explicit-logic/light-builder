@@ -6,9 +6,11 @@ import { Question } from '../../types';
 interface MultipleResponseProps {
   question: Question;
   updateQuestion: (updatedQuestion: Partial<Question>) => void;
+  answers: string[];
+  onAnswerChange: (optionId: string) => void;
 }
 
-function MultipleResponse({ question, updateQuestion }: MultipleResponseProps) {
+function MultipleResponse({ question, updateQuestion, answers, onAnswerChange }: MultipleResponseProps) {
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     updateQuestion({ text: e.target.value });
   };
@@ -22,21 +24,11 @@ function MultipleResponse({ question, updateQuestion }: MultipleResponseProps) {
     });
   };
 
-  const handleOptionCorrectChange = (optionId: string) => {
-    if (!question.options) return;
-    updateQuestion({
-      options: question.options.map((opt) =>
-        opt.id === optionId ? { ...opt, isCorrect: !opt.isCorrect } : opt
-      ),
-    });
-  };
-
   const addOption = () => {
     if (!question.options) return;
     const newOption = {
       id: `option-${Date.now()}`,
       text: '',
-      isCorrect: false,
     };
     updateQuestion({ options: [...question.options, newOption] });
   };
@@ -46,6 +38,10 @@ function MultipleResponse({ question, updateQuestion }: MultipleResponseProps) {
     updateQuestion({
       options: question.options.filter((opt) => opt.id !== optionId),
     });
+    // Also remove from answers if it was selected
+    if (answers.includes(optionId)) {
+      onAnswerChange(optionId);
+    }
   };
 
   return (
@@ -86,8 +82,8 @@ function MultipleResponse({ question, updateQuestion }: MultipleResponseProps) {
                   </DragHandle>
                   <input
                     type="checkbox"
-                    checked={option.isCorrect}
-                    onChange={() => handleOptionCorrectChange(option.id)}
+                    checked={answers.includes(option.id)}
+                    onChange={() => onAnswerChange(option.id)}
                     className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
                   />
                   <input

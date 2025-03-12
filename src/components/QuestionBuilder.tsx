@@ -258,6 +258,9 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
   const [showJsonOutput, setShowJsonOutput] = useState<boolean>(false);
   const [jsonOutputPage, setJsonOutputPage] = useState<string | null>(null);
   
+  // State for answers
+  const [answers, setAnswers] = useState<Record<string, string[]>>({});
+  
   // State for pages and active page
   const [pages, setPages] = useState<Page[]>([
     { id: 'page-1', title: t('questionBuilder.page.title', { number: 1 }), questions: [] }
@@ -289,7 +292,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
   const generateCurrentPageJson = () => {
     if (!jsonOutputPage) return '{}';
     const currentPage = pages.find(p => p.id === jsonOutputPage);
-    return generatePageJson(jsonOutputPage, currentPage, getQuestionsForPage, pageTimeLimit);
+    return generatePageJson(jsonOutputPage, currentPage, getQuestionsForPage, pageTimeLimit, answers);
   };
 
   // Toggle JSON output display
@@ -347,7 +350,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
       name: quizName,
       description: quizDescription,
       timeLimits: { globalTimeLimit, pageTimeLimit }
-    });
+    }, answers);
     const fileName = 'full_quiz.json';
     
     const blob = new Blob([json], { type: 'application/json' });
@@ -370,6 +373,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
       const result = await exportQuizAsZipHandler({
         pages,
         getQuestionsForPage,
+        answers,
         quizMetadata: {
           name: quizName,
           description: quizDescription,
@@ -458,21 +462,50 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
     }
   };
 
+  // Update answers when a question changes
+  const updateAnswers = (questionId: string, question: Question) => {
+    const newAnswers = { ...answers };
+    
+    // Initialize empty answers array if it doesn't exist
+    if (!newAnswers[questionId]) {
+      newAnswers[questionId] = [];
+    }
+    
+    setAnswers(newAnswers);
+  };
+
+  // Modified updateQuestion to handle answers separately
+  const updateQuestion = (id: string, updatedQuestion: Partial<Question>) => {
+    const currentQuestion = questions[id];
+    if (!currentQuestion) return;
+    
+    const newQuestion = { ...currentQuestion, ...updatedQuestion };
+    setQuestions({
+      ...questions,
+      [id]: newQuestion
+    });
+
+    // Update answers if needed
+    updateAnswers(id, newQuestion);
+  };
+
   const addQuestion = () => {
     const newQuestion: Question = {
       id: `question-${Date.now()}`,
       type: questionType,
       text: t('questionBuilder.questionNumber', { number: activePageQuestionIds.length + 1 }),
       options: questionType === 'fill-in-the-blank' ? [] : [
-        { id: `option-${Date.now()}-1`, text: '', isCorrect: false },
-        { id: `option-${Date.now()}-2`, text: '', isCorrect: false },
+        { id: `option-${Date.now()}-1`, text: '' },
+        { id: `option-${Date.now()}-2`, text: '' },
       ],
-      answer: questionType === 'fill-in-the-blank' ? '' : undefined,
       image: null,
     };
     
     // Add the question to the questions object
     setQuestions({ ...questions, [newQuestion.id]: newQuestion });
+    
+    // Initialize empty answers for the new question
+    setAnswers(prev => ({ ...prev, [newQuestion.id]: [] }));
     
     // Add the question ID to the active page
     setPages(pages.map(page => 
@@ -482,21 +515,16 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
     ));
   };
 
-  const updateQuestion = (id: string, updatedQuestion: Partial<Question>) => {
-    const currentQuestion = questions[id];
-    if (!currentQuestion) return;
-    
-    setQuestions({
-      ...questions,
-      [id]: { ...currentQuestion, ...updatedQuestion }
-    });
-  };
-
   const deleteQuestion = (id: string) => {
     // Remove the question from the questions object
     const updatedQuestions = { ...questions };
     delete updatedQuestions[id];
     setQuestions(updatedQuestions);
+    
+    // Remove the question's answers
+    const updatedAnswers = { ...answers };
+    delete updatedAnswers[id];
+    setAnswers(updatedAnswers);
     
     // Remove the question ID from any page that contains it
     setPages(pages.map(page => ({
@@ -619,19 +647,59 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
       updateQuestion(question.id, updatedQuestion);
     };
 
+    const handleAnswerChange = (optionId: string) => {
+      const currentAnswers = answers[question.id] || [];
+      let newAnswers: string[];
+
+      if (question.type === 'multiple-choice') {
+        // For multiple choice, only one answer can be selected
+        newAnswers = [optionId];
+      } else if (question.type === 'multiple-response') {
+        // For multiple response, toggle the selected option
+        newAnswers = currentAnswers.includes(optionId)
+          ? currentAnswers.filter(id => id !== optionId)
+          : [...currentAnswers, optionId];
+      } else if (question.type === 'fill-in-the-blank') {
+        // For fill in the blank, just use the input value
+        newAnswers = [optionId];
+      } else {
+        return;
+      }
+
+      setAnswers(prev => ({
+        ...prev,
+        [question.id]: newAnswers
+      }));
+    };
+
     switch (question.type) {
       case 'multiple-choice':
-        return <MultipleChoice question={question} updateQuestion={updateThisQuestion} />;
+        return <MultipleChoice 
+          question={question} 
+          updateQuestion={updateThisQuestion} 
+          answers={answers[question.id] || []}
+          onAnswerChange={handleAnswerChange}
+        />;
       case 'multiple-response':
-        return <MultipleResponse question={question} updateQuestion={updateThisQuestion} />;
+        return <MultipleResponse 
+          question={question} 
+          updateQuestion={updateThisQuestion} 
+          answers={answers[question.id] || []}
+          onAnswerChange={handleAnswerChange}
+        />;
       case 'fill-in-the-blank':
-        return <FillInTheBlank question={question} updateQuestion={updateThisQuestion} />;
+        return <FillInTheBlank 
+          question={question} 
+          updateQuestion={updateThisQuestion} 
+          answers={answers[question.id] || []}
+          onAnswerChange={handleAnswerChange}
+        />;
       default:
         return null;
     }
   };
 
-  // Handle quiz import
+  // Modified handleImportQuiz to handle answers
   const handleImportQuiz = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -643,11 +711,13 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
         globalTimeLimit: newGlobalTimeLimit, 
         pageTimeLimit: newPageTimeLimit,
         name: newQuizName,
-        description: newQuizDescription
+        description: newQuizDescription,
+        answers: newAnswers
       } = await importQuizFromZip(file);
       
       // Update state
       setQuestions(newQuestions);
+      setAnswers(newAnswers);
       setPages(newPages);
       setActivePage(newPages[0]?.id || 'page-1');
       setGlobalTimeLimit(newGlobalTimeLimit);
@@ -897,7 +967,7 @@ function QuestionBuilder({ questions, setQuestions }: QuestionBuilderProps) {
                         name: quizName,
                         description: quizDescription,
                         timeLimits: { globalTimeLimit, pageTimeLimit }
-                      }) 
+                      }, answers) 
                     : generateCurrentPageJson()}
                 </pre>
               </div>
